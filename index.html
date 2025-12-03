@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fuel Tracker</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        /* Smooth scrolling */
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800 font-sans min-h-screen pb-10">
+
+    <!-- Top Navigation -->
+    <nav class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="max-w-3xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold"><i class="fas fa-gas-pump mr-2"></i>MPG Tracker</h1>
+            <div class="space-x-3">
+                <button onclick="exportData()" class="p-2 active:opacity-75" title="Export JSON"><i class="fas fa-download"></i></button>
+                <button onclick="triggerImport()" class="p-2 active:opacity-75" title="Import JSON"><i class="fas fa-upload"></i></button>
+                <input type="file" id="fileInput" class="hidden" onchange="importData(this)" accept=".json">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div class="max-w-3xl mx-auto p-4 space-y-4">
+
+        <!-- Summary Card -->
+        <div class="bg-white rounded-xl shadow-sm p-4 grid grid-cols-2 gap-4 border border-gray-100">
+            <div class="text-center p-2 bg-blue-50 rounded-lg">
+                <p class="text-xs text-blue-600 font-bold uppercase tracking-wider">Overall MPG</p>
+                <p class="text-2xl font-black text-blue-800" id="overallMpg">--</p>
+            </div>
+            <div class="text-center p-2 bg-green-50 rounded-lg">
+                <p class="text-xs text-green-600 font-bold uppercase tracking-wider">Last MPG</p>
+                <p class="text-2xl font-black text-green-800" id="lastMpg">--</p>
+            </div>
+        </div>
+
+        <!-- Input Form (Collapsible) -->
+        <div class="bg-white rounded-xl shadow-lg p-5 border border-gray-100">
+            <h2 class="text-lg font-bold mb-4 text-gray-700">New Entry</h2>
+            <form id="entryForm" onsubmit="addEntry(event)" class="space-y-4">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Date</label>
+                        <input type="date" id="date" required 
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Odometer</label>
+                        <input type="number" id="odometer" placeholder="e.g. 85000" required inputmode="decimal"
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Gallons</label>
+                        <input type="number" id="gallons" step="0.001" placeholder="12.5" required inputmode="decimal"
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">Price/Gal ($)</label>
+                        <input type="number" id="price" step="0.01" placeholder="2.50" inputmode="decimal"
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    </div>
+                </div>
+
+                <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold py-3 rounded-lg shadow-md transition transform duration-150">
+                    <i class="fas fa-plus-circle mr-2"></i> Add Log
+                </button>
+            </form>
+        </div>
+
+        <!-- History List -->
+        <div>
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">History</h3>
+            <div id="historyList" class="space-y-3">
+                <!-- Entries injected here via JS -->
+            </div>
+        </div>
+        
+        <!-- Reset Button -->
+        <div class="text-center pt-8">
+            <button onclick="resetData()" class="text-xs text-red-400 underline">Reset All Data</button>
+        </div>
+
+    </div>
+
+    <!-- Logic -->
+    <script>
+        // Initial Data provided by user (Cleaned up)
+        const initialData = [
+            { date: "2025-06-15", odometer: 79269, gallons: 10.73, price: 2.75 },
+            { date: "2025-06-21", odometer: 79608, gallons: 11.77, price: 2.88 },
+            { date: "2025-07-02", odometer: 79946, gallons: 12.79, price: 2.46 },
+            { date: "2025-07-13", odometer: 80279, gallons: 12.69, price: 2.70 },
+            { date: "2025-08-17", odometer: 80842, gallons: 25.62, price: 2.89 },
+            { date: "2025-08-29", odometer: 81111, gallons: 12.39, price: 2.79 },
+            { date: "2025-09-07", odometer: 81366, gallons: 11.17, price: 2.70 },
+            { date: "2025-09-12", odometer: 81593, gallons: 9.78, price: 2.47 },
+            { date: "2025-09-14", odometer: 81963, gallons: 12.05, price: 2.47 },
+            { date: "2025-09-22", odometer: 82259, gallons: 12.24, price: 2.48 },
+            { date: "2025-10-02", odometer: 82564, gallons: 13.58, price: 2.49 },
+            { date: "2025-10-10", odometer: 82864, gallons: 13.18, price: 2.49 },
+            { date: "2025-10-15", odometer: 83138, gallons: 11.54, price: 2.59 },
+            { date: "2025-10-30", odometer: 83386, gallons: 11.94, price: 2.35 },
+            { date: "2025-11-09", odometer: 83662, gallons: 11.96, price: 2.70 },
+            { date: "2025-11-15", odometer: 83951, gallons: 11.11, price: 2.48 },
+            { date: "2025-11-16", odometer: 84156, gallons: 6.50, price: 2.47 },
+            { date: "2025-11-26", odometer: 84445, gallons: 12.45, price: 2.48 },
+            { date: "2025-11-28", odometer: 84776, gallons: 11.03, price: 2.33 }
+        ];
+
+        let logs = [];
+
+        // Initialize
+        function init() {
+            // Load from local storage or use initial data
+            const stored = localStorage.getItem('fuelLogs');
+            if (stored) {
+                logs = JSON.parse(stored);
+            } else {
+                logs = initialData;
+                saveData();
+            }
+            
+            // Set today's date in form
+            document.getElementById('date').valueAsDate = new Date();
+            
+            render();
+        }
+
+        function saveData() {
+            localStorage.setItem('fuelLogs', JSON.stringify(logs));
+        }
+
+        function addEntry(e) {
+            e.preventDefault();
+            const date = document.getElementById('date').value;
+            const odo = parseFloat(document.getElementById('odometer').value);
+            const gal = parseFloat(document.getElementById('gallons').value);
+            const price = parseFloat(document.getElementById('price').value) || 0;
+
+            if(!date || !odo || !gal) return alert("Please fill required fields");
+
+            const newEntry = { date, odometer: odo, gallons: gal, price };
+            
+            logs.push(newEntry);
+            
+            // Sort by odometer to ensure order
+            logs.sort((a, b) => a.odometer - b.odometer);
+            
+            saveData();
+            
+            // Clear inputs (except odometer, maybe user wants to see it? Nah, clear it)
+            document.getElementById('odometer').value = '';
+            document.getElementById('gallons').value = '';
+            document.getElementById('price').value = '';
+            
+            render();
+        }
+
+        function calculateMetrics() {
+            if (logs.length < 2) return { history: [], overall: 0, last: 0 };
+
+            let totalMiles = 0;
+            let totalGallons = 0;
+            let calculatedHistory = [];
+
+            // Process form newest to oldest for display, but calc normally
+            // We iterate normally first
+            for (let i = 1; i < logs.length; i++) {
+                const current = logs[i];
+                const prev = logs[i-1];
+                
+                const miles = current.odometer - prev.odometer;
+                const mpg = miles / current.gallons;
+                const cost = current.gallons * current.price;
+
+                totalMiles += miles;
+                totalGallons += current.gallons;
+
+                calculatedHistory.push({
+                    ...current,
+                    miles,
+                    mpg,
+                    cost
+                });
+            }
+
+            const overall = totalMiles / totalGallons;
+            const last = calculatedHistory[calculatedHistory.length - 1]?.mpg || 0;
+
+            return { 
+                history: calculatedHistory.reverse(), // Show newest first
+                overall, 
+                last 
+            };
+        }
+
+        function render() {
+            const metrics = calculateMetrics();
+            
+            // Update Stats
+            document.getElementById('overallMpg').innerText = metrics.overall.toFixed(1);
+            document.getElementById('lastMpg').innerText = metrics.last.toFixed(1);
+            
+            // Color code the last mpg
+            const lastMpgEl = document.getElementById('lastMpg');
+            if(metrics.last > metrics.overall) {
+                lastMpgEl.className = "text-2xl font-black text-green-600";
+            } else {
+                lastMpgEl.className = "text-2xl font-black text-orange-500";
+            }
+
+            // Render List
+            const listEl = document.getElementById('historyList');
+            listEl.innerHTML = '';
+
+            metrics.history.forEach(item => {
+                const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500 flex justify-between items-center";
+                
+                card.innerHTML = `
+                    <div>
+                        <div class="text-sm font-bold text-gray-800">${dateStr}</div>
+                        <div class="text-xs text-gray-500">
+                            ${item.miles} mi • ${item.gallons} gal • $${item.price.toFixed(2)}/gal
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1">Odo: ${item.odometer}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xl font-bold text-slate-700">${item.mpg.toFixed(1)} <span class="text-xs font-normal text-gray-400">MPG</span></div>
+                        <div class="text-xs text-gray-500">$${(item.cost).toFixed(2)}</div>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        // --- Import / Export ---
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "fuel_logs_" + new Date().toISOString().slice(0,10) + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function triggerImport() {
+            document.getElementById('fileInput').click();
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if(Array.isArray(imported)) {
+                        if(confirm("Replace current data with imported data?")) {
+                            logs = imported;
+                            saveData();
+                            render();
+                            alert("Import successful!");
+                        }
+                    } else {
+                        alert("Invalid JSON format");
+                    }
+                } catch (err) {
+                    alert("Error reading file");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function resetData() {
+            if(confirm("Are you sure you want to delete all data and reset to defaults?")) {
+                localStorage.removeItem('fuelLogs');
+                init();
+            }
+        }
+
+        // Start App
+        init();
+
+    </script>
+</body>
+</html>
