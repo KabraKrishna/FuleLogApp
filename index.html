@@ -3,61 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fuel Tracker</title>
-    <!-- Tailwind CSS for styling -->
+    <title>Fuel Tracker Pro v4.1</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Icons -->
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { -webkit-tap-highlight-color: transparent; }
-        /* Smooth scrolling */
         html { scroll-behavior: smooth; }
+        .edit-mode { border: 2px solid #f59e0b; background-color: #fffbeb; }
+        body { overscroll-behavior-y: none; }
+        /* Loading spinner */
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
     </style>
 </head>
-<body class="bg-gray-100 text-slate-800 font-sans min-h-screen pb-10">
+<body class="bg-gray-100 text-slate-800 font-sans min-h-screen pb-32">
 
-    <!-- Top Navigation -->
-    <nav class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div class="max-w-3xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold"><i class="fas fa-gas-pump mr-2"></i>MPG Tracker</h1>
-            <div class="space-x-3">
-                <button onclick="exportData()" class="p-2 active:opacity-75" title="Export JSON"><i class="fas fa-download"></i></button>
-                <button onclick="triggerImport()" class="p-2 active:opacity-75" title="Import JSON"><i class="fas fa-upload"></i></button>
-                <input type="file" id="fileInput" class="hidden" onchange="importData(this)" accept=".json">
+    <!-- Top Nav -->
+    <nav class="bg-blue-600 text-white p-3 sticky top-0 z-40 shadow-md">
+        <div class="max-w-3xl mx-auto flex flex-col gap-3">
+            <div class="flex justify-between items-center">
+                <h1 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fas fa-chart-line"></i> Tracker Pro
+                    <span id="syncStatus" class="text-[10px] bg-blue-800 px-2 py-0.5 rounded-full opacity-0 transition-opacity">Saved</span>
+                </h1>
+                <button onclick="window.toggleSettings()" class="p-2 bg-blue-700 rounded-lg hover:bg-blue-800 transition">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+
+            <!-- Vehicle Selector -->
+            <div class="relative">
+                <select id="vehicleSelect" onchange="window.switchVehicle(this.value)" 
+                    class="w-full bg-blue-700 text-white border border-blue-500 text-sm rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 font-semibold appearance-none">
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content Container -->
     <div class="max-w-3xl mx-auto p-4 space-y-4">
 
-        <!-- Summary Card -->
+        <!-- Stats -->
         <div class="bg-white rounded-xl shadow-sm p-4 grid grid-cols-2 gap-4 border border-gray-100">
             <div class="text-center p-2 bg-blue-50 rounded-lg">
-                <p class="text-xs text-blue-600 font-bold uppercase tracking-wider">Overall MPG</p>
+                <p class="text-xs text-blue-600 font-bold uppercase">Overall MPG</p>
                 <p class="text-2xl font-black text-blue-800" id="overallMpg">--</p>
             </div>
             <div class="text-center p-2 bg-green-50 rounded-lg">
-                <p class="text-xs text-green-600 font-bold uppercase tracking-wider">Last MPG</p>
+                <p class="text-xs text-green-600 font-bold uppercase">Last MPG</p>
                 <p class="text-2xl font-black text-green-800" id="lastMpg">--</p>
             </div>
         </div>
 
-        <!-- Input Form (Collapsible) -->
-        <div class="bg-white rounded-xl shadow-lg p-5 border border-gray-100">
-            <h2 class="text-lg font-bold mb-4 text-gray-700">New Entry</h2>
-            <form id="entryForm" onsubmit="addEntry(event)" class="space-y-4">
-                
+        <!-- Charts Container -->
+        <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-sm font-bold text-gray-700 uppercase">Analytics</h3>
+                <div class="space-x-2">
+                    <button onclick="window.switchChart('mpg')" id="btn-chart-mpg" class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold">MPG</button>
+                    <button onclick="window.switchChart('price')" id="btn-chart-price" class="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded font-bold">Price</button>
+                </div>
+            </div>
+            <div class="h-48 w-full relative">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <div id="formContainer" class="bg-white rounded-xl shadow-lg p-5 border border-gray-100 transition-colors duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-700" id="formTitle">New Entry</h2>
+                <button type="button" id="cancelEditBtn" onclick="window.resetForm()" class="hidden text-xs text-red-500 font-bold uppercase bg-red-50 px-2 py-1 rounded">Cancel Edit</button>
+            </div>
+            
+            <form id="entryForm" onsubmit="window.handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="entryId">
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Date</label>
                         <input type="date" id="date" required 
-                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Odometer</label>
-                        <input type="number" id="odometer" placeholder="e.g. 85000" required inputmode="decimal"
-                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                        <input type="number" id="odometer" placeholder="85000" required inputmode="decimal"
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
 
@@ -65,242 +105,502 @@
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Gallons</label>
                         <input type="number" id="gallons" step="0.001" placeholder="12.5" required inputmode="decimal"
-                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Price/Gal ($)</label>
                         <input type="number" id="price" step="0.01" placeholder="2.50" inputmode="decimal"
-                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                 </div>
 
-                <button type="submit" 
-                    class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold py-3 rounded-lg shadow-md transition transform duration-150">
-                    <i class="fas fa-plus-circle mr-2"></i> Add Log
+                <!-- Partial Fill Toggle -->
+                <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold text-gray-700">Partial Fill?</span>
+                        <span class="text-[10px] text-gray-400">Did not fill to top</span>
+                    </div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="isPartial" id="isPartial" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/>
+                        <label for="isPartial" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Notes</label>
+                    <textarea id="notes" rows="2" placeholder="Optional notes..." 
+                        class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+                <button type="submit" id="submitBtn"
+                    class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold py-3 rounded-lg shadow-md transition-all flex justify-center items-center">
+                    <i class="fas fa-plus-circle mr-2"></i> <span>Add Log</span>
                 </button>
             </form>
         </div>
 
-        <!-- History List -->
+        <!-- History -->
         <div>
             <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">History</h3>
-            <div id="historyList" class="space-y-3">
-                <!-- Entries injected here via JS -->
+            <div id="historyList" class="space-y-3 pb-8">
+                <div class="text-center py-10">
+                    <div class="loader mx-auto mb-2"></div>
+                    <p class="text-xs text-gray-400">Loading Cloud Data...</p>
+                </div>
+            </div>
+            <div id="emptyState" class="hidden text-center py-10 text-gray-400">
+                <i class="fas fa-clipboard-list text-4xl mb-2 opacity-50"></i>
+                <p>No logs found for this vehicle.</p>
             </div>
         </div>
-        
-        <!-- Reset Button -->
-        <div class="text-center pt-8">
-            <button onclick="resetData()" class="text-xs text-red-400 underline">Reset All Data</button>
-        </div>
-
     </div>
 
-    <!-- Logic -->
-    <script>
-        // Initial Data provided by user (Cleaned up)
-        const initialData = [
-            { date: "2025-06-15", odometer: 79269, gallons: 10.73, price: 2.75 },
-            { date: "2025-06-21", odometer: 79608, gallons: 11.77, price: 2.88 },
-            { date: "2025-07-02", odometer: 79946, gallons: 12.79, price: 2.46 },
-            { date: "2025-07-13", odometer: 80279, gallons: 12.69, price: 2.70 },
-            { date: "2025-08-17", odometer: 80842, gallons: 25.62, price: 2.89 },
-            { date: "2025-08-29", odometer: 81111, gallons: 12.39, price: 2.79 },
-            { date: "2025-09-07", odometer: 81366, gallons: 11.17, price: 2.70 },
-            { date: "2025-09-12", odometer: 81593, gallons: 9.78, price: 2.47 },
-            { date: "2025-09-14", odometer: 81963, gallons: 12.05, price: 2.47 },
-            { date: "2025-09-22", odometer: 82259, gallons: 12.24, price: 2.48 },
-            { date: "2025-10-02", odometer: 82564, gallons: 13.58, price: 2.49 },
-            { date: "2025-10-10", odometer: 82864, gallons: 13.18, price: 2.49 },
-            { date: "2025-10-15", odometer: 83138, gallons: 11.54, price: 2.59 },
-            { date: "2025-10-30", odometer: 83386, gallons: 11.94, price: 2.35 },
-            { date: "2025-11-09", odometer: 83662, gallons: 11.96, price: 2.70 },
-            { date: "2025-11-15", odometer: 83951, gallons: 11.11, price: 2.48 },
-            { date: "2025-11-16", odometer: 84156, gallons: 6.50, price: 2.47 },
-            { date: "2025-11-26", odometer: 84445, gallons: 12.45, price: 2.48 },
-            { date: "2025-11-28", odometer: 84776, gallons: 11.03, price: 2.33 }
-        ];
+    <!-- Settings Modal -->
+    <div id="settingsModal" onclick="if(event.target === this) window.toggleSettings()" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 cursor-pointer">
+        <div class="bg-white w-full max-w-sm rounded-t-xl sm:rounded-xl shadow-2xl p-6 space-y-6 cursor-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold text-gray-800">Settings</h3>
+                <button onclick="window.toggleSettings()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
 
-        let logs = [];
+            <div class="space-y-3">
+                <h4 class="text-sm font-bold text-gray-500 uppercase">Vehicles</h4>
+                <div class="flex gap-2">
+                    <input type="text" id="newVehicleName" placeholder="Name" class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm">
+                    <button onclick="window.addVehicle()" class="bg-green-600 text-white px-4 rounded-lg text-sm font-bold"><i class="fas fa-plus"></i></button>
+                </div>
+                <div id="vehicleList" class="space-y-2 max-h-32 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
 
-        // Initialize
-        function init() {
-            // Load from local storage or use initial data
-            const stored = localStorage.getItem('fuelLogs');
-            if (stored) {
-                logs = JSON.parse(stored);
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // --- CONFIGURATION ---
+        // ==========================================
+        let firebaseConfig = {
+            apiKey: "AIzaSyAc_OjXWuMB6zDuKXi5xGNI_a30o2J5aoY",
+            authDomain: "fuel-tracker-pro-2d87d.firebaseapp.com",
+            projectId: "fuel-tracker-pro-2d87d",
+            storageBucket: "fuel-tracker-pro-2d87d.firebasestorage.app",
+            messagingSenderId: "1083986513796",
+            appId: "1:1083986513796:web:c8cbd5e0047e49093c97d1",
+            measurementId: "G-DFPYH0YLM9"
+        };
+        
+        if (typeof __firebase_config !== 'undefined') {
+            try { firebaseConfig = JSON.parse(__firebase_config); } 
+            catch (e) { console.warn("Could not parse env config", e); }
+        }
+
+        if (!firebaseConfig || !firebaseConfig.apiKey) {
+             document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase API Config Missing</div>`;
+             throw new Error("Missing Config");
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
+
+        let currentUser = null;
+        let appState = {
+            vehicles: [],
+            activeVehicle: localStorage.getItem('lastActiveVehicle') || null,
+            logs: []
+        };
+        let chartInstance = null;
+        let activeChartType = 'mpg'; // 'mpg' or 'price'
+
+        // --- Auth ---
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
             } else {
-                logs = initialData;
-                saveData();
+                await signInAnonymously(auth);
             }
-            
-            // Set today's date in form
-            document.getElementById('date').valueAsDate = new Date();
-            
-            render();
-        }
+        };
+        initAuth();
 
-        function saveData() {
-            localStorage.setItem('fuelLogs', JSON.stringify(logs));
-        }
-
-        function addEntry(e) {
-            e.preventDefault();
-            const date = document.getElementById('date').value;
-            const odo = parseFloat(document.getElementById('odometer').value);
-            const gal = parseFloat(document.getElementById('gallons').value);
-            const price = parseFloat(document.getElementById('price').value) || 0;
-
-            if(!date || !odo || !gal) return alert("Please fill required fields");
-
-            const newEntry = { date, odometer: odo, gallons: gal, price };
-            
-            logs.push(newEntry);
-            
-            // Sort by odometer to ensure order
-            logs.sort((a, b) => a.odometer - b.odometer);
-            
-            saveData();
-            
-            // Clear inputs (except odometer, maybe user wants to see it? Nah, clear it)
-            document.getElementById('odometer').value = '';
-            document.getElementById('gallons').value = '';
-            document.getElementById('price').value = '';
-            
-            render();
-        }
-
-        function calculateMetrics() {
-            if (logs.length < 2) return { history: [], overall: 0, last: 0 };
-
-            let totalMiles = 0;
-            let totalGallons = 0;
-            let calculatedHistory = [];
-
-            // Process form newest to oldest for display, but calc normally
-            // We iterate normally first
-            for (let i = 1; i < logs.length; i++) {
-                const current = logs[i];
-                const prev = logs[i-1];
-                
-                const miles = current.odometer - prev.odometer;
-                const mpg = miles / current.gallons;
-                const cost = current.gallons * current.price;
-
-                totalMiles += miles;
-                totalGallons += current.gallons;
-
-                calculatedHistory.push({
-                    ...current,
-                    miles,
-                    mpg,
-                    cost
-                });
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                setupListeners(user);
             }
+        });
 
-            const overall = totalMiles / totalGallons;
-            const last = calculatedHistory[calculatedHistory.length - 1]?.mpg || 0;
+        function setupListeners(user) {
+            const USER_ROOT = `artifacts/${appId}/users/${user.uid}`;
 
-            return { 
-                history: calculatedHistory.reverse(), // Show newest first
-                overall, 
-                last 
-            };
-        }
-
-        function render() {
-            const metrics = calculateMetrics();
-            
-            // Update Stats
-            document.getElementById('overallMpg').innerText = metrics.overall.toFixed(1);
-            document.getElementById('lastMpg').innerText = metrics.last.toFixed(1);
-            
-            // Color code the last mpg
-            const lastMpgEl = document.getElementById('lastMpg');
-            if(metrics.last > metrics.overall) {
-                lastMpgEl.className = "text-2xl font-black text-green-600";
-            } else {
-                lastMpgEl.className = "text-2xl font-black text-orange-500";
-            }
-
-            // Render List
-            const listEl = document.getElementById('historyList');
-            listEl.innerHTML = '';
-
-            metrics.history.forEach(item => {
-                const dateStr = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            // Listen to Vehicles
+            onSnapshot(collection(db, USER_ROOT, 'vehicles'), (snapshot) => {
+                appState.vehicles = [];
+                snapshot.forEach(doc => appState.vehicles.push(doc.data()));
                 
-                const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500 flex justify-between items-center";
-                
-                card.innerHTML = `
-                    <div>
-                        <div class="text-sm font-bold text-gray-800">${dateStr}</div>
-                        <div class="text-xs text-gray-500">
-                            ${item.miles} mi • ${item.gallons} gal • $${item.price.toFixed(2)}/gal
-                        </div>
-                        <div class="text-xs text-gray-400 mt-1">Odo: ${item.odometer}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-xl font-bold text-slate-700">${item.mpg.toFixed(1)} <span class="text-xs font-normal text-gray-400">MPG</span></div>
-                        <div class="text-xs text-gray-500">$${(item.cost).toFixed(2)}</div>
-                    </div>
-                `;
-                listEl.appendChild(card);
+                if (appState.vehicles.length === 0) {
+                    window.addVehicle('My Car');
+                } else {
+                    const exists = appState.vehicles.find(v => v.id === appState.activeVehicle);
+                    if (!exists) {
+                        appState.activeVehicle = appState.vehicles[0].id;
+                        localStorage.setItem('lastActiveVehicle', appState.activeVehicle);
+                    }
+                    window.render();
+                }
+            });
+
+            // Listen to Logs
+            onSnapshot(collection(db, USER_ROOT, 'logs'), (snapshot) => {
+                appState.logs = [];
+                snapshot.forEach(doc => appState.logs.push(doc.data()));
+                appState.logs.sort((a, b) => a.odometer - b.odometer);
+                window.render();
+                showSyncStatus();
             });
         }
 
-        // --- Import / Export ---
-
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "fuel_logs_" + new Date().toISOString().slice(0,10) + ".json");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
+        function showSyncStatus() {
+            const el = document.getElementById('syncStatus');
+            el.classList.remove('opacity-0');
+            setTimeout(() => el.classList.add('opacity-0'), 2000);
         }
 
-        function triggerImport() {
-            document.getElementById('fileInput').click();
-        }
+        // --- Main Functions ---
 
-        function importData(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if(Array.isArray(imported)) {
-                        if(confirm("Replace current data with imported data?")) {
-                            logs = imported;
-                            saveData();
-                            render();
-                            alert("Import successful!");
-                        }
-                    } else {
-                        alert("Invalid JSON format");
-                    }
-                } catch (err) {
-                    alert("Error reading file");
+        window.handleFormSubmit = async function(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loader border-white border-t-blue-600"></div>';
+
+            try {
+                const id = document.getElementById('entryId').value;
+                const gallons = parseFloat(document.getElementById('gallons').value);
+                
+                // Allow Partial toggle
+                const isPartial = document.getElementById('isPartial').checked;
+
+                if (gallons <= 0) throw new Error("Gallons must be greater than 0");
+
+                let targetVehicleId = appState.activeVehicle;
+                if (id) {
+                    const existingLog = appState.logs.find(l => String(l.id) === String(id));
+                    if (existingLog) targetVehicleId = existingLog.vehicleId;
                 }
-            };
-            reader.readAsText(file);
-        }
 
-        function resetData() {
-            if(confirm("Are you sure you want to delete all data and reset to defaults?")) {
-                localStorage.removeItem('fuelLogs');
-                init();
+                const logData = {
+                    id: id || Date.now().toString(36) + Math.random().toString(36).substr(2),
+                    vehicleId: targetVehicleId,
+                    date: document.getElementById('date').value,
+                    odometer: parseFloat(document.getElementById('odometer').value),
+                    gallons: gallons,
+                    price: parseFloat(document.getElementById('price').value) || 0,
+                    notes: document.getElementById('notes').value,
+                    isPartial: isPartial 
+                };
+
+                const USER_ROOT = `artifacts/${appId}/users/${currentUser.uid}`;
+                await setDoc(doc(db, USER_ROOT, 'logs', logData.id), logData);
+
+                window.resetForm();
+            } catch (err) {
+                alert("Error saving: " + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
+        };
+
+        window.deleteEntry = async function(id) {
+            if (!currentUser) return;
+            if (confirm("Are you sure you want to delete this entry?")) {
+                const USER_ROOT = `artifacts/${appId}/users/${currentUser.uid}`;
+                await deleteDoc(doc(db, USER_ROOT, 'logs', String(id)));
+            }
+        };
+
+        window.addVehicle = async function(optionalName) {
+            if (!currentUser) return;
+            const name = optionalName || document.getElementById('newVehicleName').value.trim();
+            if (!name) return;
+            const id = 'v_' + Date.now();
+            const USER_ROOT = `artifacts/${appId}/users/${currentUser.uid}`;
+            await setDoc(doc(db, USER_ROOT, 'vehicles', id), { id, name });
+            window.switchVehicle(id);
+            document.getElementById('newVehicleName').value = '';
+        };
+
+        window.switchVehicle = function(id) {
+            appState.activeVehicle = id;
+            localStorage.setItem('lastActiveVehicle', id);
+            window.resetForm();
+            window.render();
+        };
+
+        window.editEntry = function(id) {
+            const log = appState.logs.find(l => String(l.id) === String(id));
+            if (!log) return;
+
+            document.getElementById('entryId').value = log.id;
+            document.getElementById('date').value = log.date;
+            document.getElementById('odometer').value = log.odometer;
+            document.getElementById('gallons').value = log.gallons;
+            document.getElementById('price').value = log.price;
+            document.getElementById('notes').value = log.notes || '';
+            document.getElementById('isPartial').checked = !!log.isPartial;
+
+            const container = document.getElementById('formContainer');
+            container.classList.add('edit-mode');
+            document.getElementById('formTitle').innerText = "Editing Entry";
+            const btn = document.getElementById('submitBtn');
+            btn.innerHTML = '<i class="fas fa-save mr-2"></i> <span>Save Changes</span>';
+            btn.classList.replace('bg-blue-600', 'bg-orange-500');
+            btn.classList.replace('hover:bg-blue-700', 'hover:bg-orange-600');
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            container.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.resetForm = function() {
+            document.getElementById('entryForm').reset();
+            document.getElementById('entryId').value = '';
+            document.getElementById('date').valueAsDate = new Date();
+            
+            const container = document.getElementById('formContainer');
+            container.classList.remove('edit-mode');
+            document.getElementById('formTitle').innerText = "New Entry";
+            const btn = document.getElementById('submitBtn');
+            btn.innerHTML = '<i class="fas fa-plus-circle mr-2"></i> <span>Add Log</span>';
+            btn.classList.replace('bg-orange-500', 'bg-blue-600');
+            btn.classList.replace('hover:bg-orange-600', 'hover:bg-blue-700');
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        };
+
+        window.toggleSettings = function() {
+            document.getElementById('settingsModal').classList.toggle('hidden');
+        };
+
+        // --- Advanced Calc Logic (Handles Partial Fills) ---
+        function getCalculatedHistory(vehicleLogs) {
+            if (!vehicleLogs || vehicleLogs.length === 0) return [];
+            
+            let history = [];
+            // Track the last "Full" state to calculate from
+            let pendingGallons = 0;
+            let pendingCost = 0;
+            let lastFullLog = vehicleLogs[0]; // Baseline
+
+            // The first log is always a baseline Start point
+            history.push({ ...vehicleLogs[0], miles: 0, mpg: 0, cost: vehicleLogs[0].gallons * vehicleLogs[0].price, isStart: true });
+
+            for (let i = 1; i < vehicleLogs.length; i++) {
+                const current = vehicleLogs[i];
+                
+                // Accumulate fuel/cost regardless of fill type
+                pendingGallons += current.gallons;
+                pendingCost += (current.gallons * current.price);
+
+                if (current.isPartial) {
+                    // Partial: Just record data, no MPG calc yet
+                    history.push({
+                        ...current,
+                        miles: current.odometer - vehicleLogs[i-1].odometer, // Miles since immediate prev
+                        mpg: 0, // Cannot calc yet
+                        cost: current.gallons * current.price,
+                        isPartialLog: true
+                    });
+                } else {
+                    // Full Fill: Calculate stats since last FULL log
+                    const totalMiles = current.odometer - lastFullLog.odometer;
+                    const totalGallons = pendingGallons; // All fuel added since last full
+                    
+                    const mpg = totalGallons > 0 ? (totalMiles / totalGallons) : 0;
+                    
+                    history.push({
+                        ...current,
+                        miles: totalMiles, // Miles covered by this fill + previous partials
+                        mpg: mpg,
+                        cost: current.gallons * current.price, // Cost of THIS fill only for display
+                        isFullFill: true
+                    });
+
+                    // Reset accumulators
+                    pendingGallons = 0;
+                    pendingCost = 0;
+                    lastFullLog = current;
+                }
+            }
+
+            return history.reverse();
         }
 
-        // Start App
-        init();
+        window.switchChart = function(type) {
+            activeChartType = type;
+            const btnMpg = document.getElementById('btn-chart-mpg');
+            const btnPrice = document.getElementById('btn-chart-price');
+            
+            if(type === 'mpg') {
+                btnMpg.className = "text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold";
+                btnPrice.className = "text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded font-bold";
+            } else {
+                btnMpg.className = "text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded font-bold";
+                btnPrice.className = "text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold";
+            }
+            window.render();
+        }
 
+        function renderChart(history) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            
+            // Filter valid data points (reversed because history is newest-first)
+            // We want oldest-first for chart
+            const dataPoints = [...history].reverse().filter(h => !h.isStart);
+
+            // Destroy old chart if exists
+            if (chartInstance) chartInstance.destroy();
+
+            let labels, data, labelStr, color;
+
+            if (activeChartType === 'mpg') {
+                // X: Odometer, Y: MPG
+                // Only show points where MPG > 0 (skip partials)
+                const validMpg = dataPoints.filter(h => h.mpg > 0);
+                labels = validMpg.map(h => h.odometer);
+                data = validMpg.map(h => h.mpg);
+                labelStr = 'MPG vs Miles';
+                color = '#2563EB'; // Blue
+            } else {
+                // X: Date, Y: Price
+                labels = dataPoints.map(h => h.date);
+                data = dataPoints.map(h => h.price);
+                labelStr = 'Gas Price ($)';
+                color = '#059669'; // Green
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: labelStr,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        tension: 0.3,
+                        pointRadius: 3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: activeChartType === 'price', ticks: { maxTicksLimit: 5 } }, // Hide X labels for odometer to keep clean
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        window.render = function() {
+            // Update Vehicle Select
+            const select = document.getElementById('vehicleSelect');
+            select.innerHTML = appState.vehicles.map(v => 
+                `<option value="${v.id}" ${v.id === appState.activeVehicle ? 'selected' : ''}>${v.name}</option>`
+            ).join('');
+
+            // Process Data
+            const currentLogs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle);
+            const history = getCalculatedHistory(currentLogs);
+
+            // Overall Stats
+            let totalMiles = 0, totalGallons = 0;
+            // Only calc overall for segments that completed a full cycle
+            // Simple approach: (Last Full Odo - First Full Odo) / Sum of Gallons between them
+            // Complex but robust: Sum up all MPG-valid segments
+            // Simplified for display:
+            if (currentLogs.length > 1) {
+                totalMiles = currentLogs[currentLogs.length - 1].odometer - currentLogs[0].odometer;
+                // Sum all gallons except the very first fill (baseline)
+                for(let i=1; i<currentLogs.length; i++) totalGallons += currentLogs[i].gallons;
+            }
+            const overall = totalGallons > 0 ? (totalMiles / totalGallons).toFixed(1) : '--';
+            const lastEntry = history.find(h => h.mpg > 0); // Find first entry with calculated MPG
+            const last = lastEntry ? lastEntry.mpg.toFixed(1) : '--';
+
+            document.getElementById('overallMpg').innerText = overall;
+            document.getElementById('lastMpg').innerText = last;
+
+            // Render Chart
+            renderChart(history);
+
+            // Render List
+            const listEl = document.getElementById('historyList');
+            const emptyEl = document.getElementById('emptyState');
+            
+            if (history.length === 0) {
+                listEl.innerHTML = '';
+                emptyEl.classList.remove('hidden');
+            } else {
+                emptyEl.classList.add('hidden');
+                listEl.innerHTML = history.map(item => {
+                    const dateStr = new Date(item.date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+                    
+                    let statBlock;
+                    if (item.isStart) {
+                        statBlock = `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">START</span>`;
+                    } else if (item.isPartialLog) {
+                        statBlock = `<span class="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-bold italic">PARTIAL</span>`;
+                    } else {
+                        statBlock = `<span class="text-xl font-bold text-gray-700">${item.mpg.toFixed(1)}</span> <span class="text-xs text-gray-400">MPG</span>`;
+                    }
+
+                    const notesHtml = item.notes ? `<div class="mt-2 text-xs text-gray-500 italic border-l-2 border-gray-300 pl-2 bg-gray-50 p-1 rounded">"${item.notes}"</div>` : '';
+
+                    return `
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-bold text-gray-800">${dateStr}</div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    ${item.isStart ? 'Initial Log' : `${item.miles} mi • ${item.gallons} gal`}
+                                </div>
+                                <div class="text-xs text-gray-400">Odo: ${item.odometer}</div>
+                            </div>
+                            <div class="text-right">
+                                <div>${statBlock}</div>
+                                <div class="text-xs text-gray-400 mt-1">$${item.cost.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        ${notesHtml}
+                        <div class="mt-3 pt-3 border-t border-gray-100 flex justify-end gap-3">
+                            <button onclick="window.editEntry('${item.id}')" class="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 rounded hover:bg-blue-100">EDIT</button>
+                            <button onclick="window.deleteEntry('${item.id}')" class="px-3 py-1 text-xs font-bold text-red-600 bg-red-50 rounded hover:bg-red-100">DELETE</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            // Settings List
+            const vList = document.getElementById('vehicleList');
+            vList.innerHTML = appState.vehicles.map(v => `
+                <div class="flex justify-between p-2 bg-gray-50 rounded mb-1 items-center">
+                    <span class="text-sm ${v.id===appState.activeVehicle?'font-bold text-blue-600':''}">${v.name}</span>
+                    ${appState.vehicles.length > 1 ? `<button onclick="window.deleteVehicle('${v.id}')" class="text-red-400 p-2"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                </div>
+            `).join('');
+        };
+        
+        document.getElementById('date').valueAsDate = new Date();
     </script>
 </body>
 </html>
