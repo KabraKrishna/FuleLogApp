@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fuel Tracker Pro v4.1</title>
+    <title>Fuel Tracker Pro v5.0</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -30,7 +30,7 @@
         <div class="max-w-3xl mx-auto flex flex-col gap-3">
             <div class="flex justify-between items-center">
                 <h1 class="text-lg font-bold flex items-center gap-2">
-                    <i class="fas fa-chart-line"></i> Tracker Pro
+                    <i class="fas fa-gas-pump"></i> Tracker Pro
                     <span id="syncStatus" class="text-[10px] bg-blue-800 px-2 py-0.5 rounded-full opacity-0 transition-opacity">Saved</span>
                 </h1>
                 <button onclick="window.toggleSettings()" class="p-2 bg-blue-700 rounded-lg hover:bg-blue-800 transition">
@@ -163,6 +163,18 @@
                 <button onclick="window.toggleSettings()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
             </div>
 
+            <!-- Auth Section -->
+            <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
+                <p id="userStatus" class="text-xs text-gray-500 mb-2">Logged in as Guest</p>
+                <button id="loginBtn" onclick="window.loginGoogle()" class="w-full bg-white text-gray-700 font-bold py-2 px-4 rounded shadow border flex items-center justify-center gap-2 hover:bg-gray-50">
+                    <i class="fab fa-google text-red-500"></i> Sign in with Google
+                </button>
+                <button id="logoutBtn" onclick="window.logout()" class="hidden w-full bg-white text-red-500 font-bold py-2 px-4 rounded shadow border hover:bg-red-50">
+                    Sign Out
+                </button>
+                <p class="text-[10px] text-gray-400 mt-2">Sign in to sync data across devices.</p>
+            </div>
+
             <div class="space-y-3">
                 <h4 class="text-sm font-bold text-gray-500 uppercase">Vehicles</h4>
                 <div class="flex gap-2">
@@ -171,18 +183,30 @@
                 </div>
                 <div id="vehicleList" class="space-y-2 max-h-32 overflow-y-auto"></div>
             </div>
+
+            <div class="space-y-3 pt-4 border-t">
+                <h4 class="text-sm font-bold text-gray-500 uppercase">Data Actions</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.exportData()" class="bg-gray-100 hover:bg-gray-200 p-3 rounded-lg text-sm font-bold"><i class="fas fa-download mr-1"></i> Backup</button>
+                    <label for="fileInput" class="bg-gray-100 hover:bg-gray-200 p-3 rounded-lg text-sm font-bold text-center cursor-pointer">
+                        <i class="fas fa-upload mr-1"></i> Restore
+                    </label>
+                </div>
+                <input type="file" id="fileInput" class="hidden" onchange="window.importData(this)" accept=".json">
+            </div>
         </div>
     </div>
 
     <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
-        // --- CONFIGURATION ---
+        // --- 1. CONFIGURATION START ---
         // ==========================================
+        
         let firebaseConfig = {
             apiKey: "AIzaSyAc_OjXWuMB6zDuKXi5xGNI_a30o2J5aoY",
             authDomain: "fuel-tracker-pro-2d87d.firebaseapp.com",
@@ -192,14 +216,14 @@
             appId: "1:1083986513796:web:c8cbd5e0047e49093c97d1",
             measurementId: "G-DFPYH0YLM9"
         };
-        
+
         if (typeof __firebase_config !== 'undefined') {
             try { firebaseConfig = JSON.parse(__firebase_config); } 
             catch (e) { console.warn("Could not parse env config", e); }
         }
 
         if (!firebaseConfig || !firebaseConfig.apiKey) {
-             document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase API Config Missing</div>`;
+             document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase API Config Missing. Please add it to index.html</div>`;
              throw new Error("Missing Config");
         }
 
@@ -215,24 +239,104 @@
             logs: []
         };
         let chartInstance = null;
-        let activeChartType = 'mpg'; // 'mpg' or 'price'
+        let activeChartType = 'mpg'; 
 
-        // --- Auth ---
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-        initAuth();
+        // --- Auth Logic ---
+        const provider = new GoogleAuthProvider();
 
+        // 1. Listen for Auth State Changes
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
+                updateAuthUI(user);
+                await checkAndMigrateData(user); // Check for old localstorage data
                 setupListeners(user);
+            } else {
+                // If logged out, fallback to anonymous for guest access
+                signInAnonymously(auth).catch(error => {
+                    console.error("Auth Error:", error);
+                    // Handle Referrer Restriction Error Gracefully
+                    if (error.code === 'auth/requests-from-referer-null-are-blocked') {
+                        alert("Firebase Configuration Error:\n\nYour API Key has 'HTTP Referrer' restrictions enabled, but this app is running locally or in a preview where the referrer is null.\n\nPlease go to Google Cloud Console > Credentials > API Key and add 'localhost' or disable restrictions temporarily.");
+                    } else {
+                        // Other auth errors
+                        console.warn("Guest auth failed. Features requiring auth may be disabled.");
+                    }
+                });
             }
         });
+
+        // 2. Login Function
+        window.loginGoogle = async function() {
+            try {
+                await signInWithPopup(auth, provider);
+                // Page will likely reload or onAuthStateChanged will trigger
+            } catch (error) {
+                alert("Login Failed: " + error.message);
+                console.error(error);
+            }
+        };
+
+        // 3. Logout Function
+        window.logout = async function() {
+            if(confirm("Sign out?")) {
+                await signOut(auth);
+                window.location.reload();
+            }
+        };
+
+        function updateAuthUI(user) {
+            const statusEl = document.getElementById('userStatus');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+
+            if (user.isAnonymous) {
+                statusEl.innerText = "Logged in as Guest (Data local to this device)";
+                loginBtn.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+            } else {
+                statusEl.innerText = `Logged in as ${user.displayName || user.email}`;
+                statusEl.classList.add('text-green-600', 'font-bold');
+                loginBtn.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
+            }
+        }
+
+        // --- Migration from LocalStorage (Old versions) ---
+        async function checkAndMigrateData(user) {
+            const oldDataKey = 'fuelTrackerPro_v3';
+            const oldData = localStorage.getItem(oldDataKey);
+            
+            if (oldData) {
+                try {
+                    const parsed = JSON.parse(oldData);
+                    const batch = writeBatch(db);
+                    const USER_ROOT = `artifacts/${appId}/users/${user.uid}`;
+
+                    if (parsed.vehicles) {
+                        parsed.vehicles.forEach(v => {
+                            const vRef = doc(db, USER_ROOT, 'vehicles', v.id);
+                            batch.set(vRef, v);
+                        });
+                    }
+
+                    if (parsed.logs) {
+                        parsed.logs.forEach(l => {
+                            const logId = l.id || Date.now().toString();
+                            const lRef = doc(db, USER_ROOT, 'logs', logId);
+                            batch.set(lRef, l);
+                        });
+                    }
+
+                    await batch.commit();
+                    localStorage.removeItem(oldDataKey);
+                    localStorage.removeItem('fuelTrackerPro_v2');
+                    alert("Old local data has been migrated to the Cloud!");
+                } catch (e) {
+                    console.error("Migration failed", e);
+                }
+            }
+        }
 
         function setupListeners(user) {
             const USER_ROOT = `artifacts/${appId}/users/${user.uid}`;
@@ -270,7 +374,7 @@
             setTimeout(() => el.classList.add('opacity-0'), 2000);
         }
 
-        // --- Main Functions ---
+        // --- Action Functions ---
 
         window.handleFormSubmit = async function(e) {
             e.preventDefault();
@@ -284,8 +388,6 @@
             try {
                 const id = document.getElementById('entryId').value;
                 const gallons = parseFloat(document.getElementById('gallons').value);
-                
-                // Allow Partial toggle
                 const isPartial = document.getElementById('isPartial').checked;
 
                 if (gallons <= 0) throw new Error("Gallons must be greater than 0");
@@ -338,6 +440,15 @@
             document.getElementById('newVehicleName').value = '';
         };
 
+        window.deleteVehicle = async function(id) {
+            if (!currentUser) return;
+            if (confirm("Delete this vehicle?")) {
+                const USER_ROOT = `artifacts/${appId}/users/${currentUser.uid}`;
+                await deleteDoc(doc(db, USER_ROOT, 'vehicles', id));
+                if(appState.activeVehicle === id) window.switchVehicle(appState.vehicles[0]?.id);
+            }
+        };
+
         window.switchVehicle = function(id) {
             appState.activeVehicle = id;
             localStorage.setItem('lastActiveVehicle', id);
@@ -373,6 +484,7 @@
             document.getElementById('entryForm').reset();
             document.getElementById('entryId').value = '';
             document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('isPartial').checked = false;
             
             const container = document.getElementById('formContainer');
             container.classList.remove('edit-mode');
@@ -388,57 +500,79 @@
             document.getElementById('settingsModal').classList.toggle('hidden');
         };
 
-        // --- Advanced Calc Logic (Handles Partial Fills) ---
+        window.exportData = function() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "fuel_backup.json");
+            document.body.appendChild(dl); dl.click(); dl.remove();
+        };
+
+        window.importData = function(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if(json.vehicles && json.logs && confirm("Import this data? This adds to existing data.")) {
+                        const batch = writeBatch(db);
+                        const USER_ROOT = `artifacts/${appId}/users/${currentUser.uid}`;
+                        
+                        json.vehicles.forEach(v => batch.set(doc(db, USER_ROOT, 'vehicles', v.id), v));
+                        json.logs.forEach(l => batch.set(doc(db, USER_ROOT, 'logs', l.id || Date.now().toString()), l));
+                        
+                        await batch.commit();
+                        alert("Import successful!");
+                        window.toggleSettings();
+                    }
+                } catch(e) { alert("Error reading file: " + e.message); }
+                input.value = null; 
+            };
+            reader.readAsText(file);
+        };
+
+        // --- Render ---
         function getCalculatedHistory(vehicleLogs) {
             if (!vehicleLogs || vehicleLogs.length === 0) return [];
             
             let history = [];
-            // Track the last "Full" state to calculate from
             let pendingGallons = 0;
             let pendingCost = 0;
-            let lastFullLog = vehicleLogs[0]; // Baseline
+            let lastFullLog = vehicleLogs[0]; 
 
-            // The first log is always a baseline Start point
             history.push({ ...vehicleLogs[0], miles: 0, mpg: 0, cost: vehicleLogs[0].gallons * vehicleLogs[0].price, isStart: true });
 
             for (let i = 1; i < vehicleLogs.length; i++) {
                 const current = vehicleLogs[i];
-                
-                // Accumulate fuel/cost regardless of fill type
                 pendingGallons += current.gallons;
                 pendingCost += (current.gallons * current.price);
 
                 if (current.isPartial) {
-                    // Partial: Just record data, no MPG calc yet
                     history.push({
                         ...current,
-                        miles: current.odometer - vehicleLogs[i-1].odometer, // Miles since immediate prev
-                        mpg: 0, // Cannot calc yet
+                        miles: current.odometer - vehicleLogs[i-1].odometer,
+                        mpg: 0, 
                         cost: current.gallons * current.price,
                         isPartialLog: true
                     });
                 } else {
-                    // Full Fill: Calculate stats since last FULL log
                     const totalMiles = current.odometer - lastFullLog.odometer;
-                    const totalGallons = pendingGallons; // All fuel added since last full
-                    
+                    const totalGallons = pendingGallons; 
                     const mpg = totalGallons > 0 ? (totalMiles / totalGallons) : 0;
                     
                     history.push({
                         ...current,
-                        miles: totalMiles, // Miles covered by this fill + previous partials
+                        miles: totalMiles, 
                         mpg: mpg,
-                        cost: current.gallons * current.price, // Cost of THIS fill only for display
+                        cost: current.gallons * current.price, 
                         isFullFill: true
                     });
-
-                    // Reset accumulators
                     pendingGallons = 0;
                     pendingCost = 0;
                     lastFullLog = current;
                 }
             }
-
             return history.reverse();
         }
 
@@ -459,30 +593,21 @@
 
         function renderChart(history) {
             const ctx = document.getElementById('mainChart').getContext('2d');
-            
-            // Filter valid data points (reversed because history is newest-first)
-            // We want oldest-first for chart
             const dataPoints = [...history].reverse().filter(h => !h.isStart);
-
-            // Destroy old chart if exists
             if (chartInstance) chartInstance.destroy();
 
             let labels, data, labelStr, color;
-
             if (activeChartType === 'mpg') {
-                // X: Odometer, Y: MPG
-                // Only show points where MPG > 0 (skip partials)
                 const validMpg = dataPoints.filter(h => h.mpg > 0);
                 labels = validMpg.map(h => h.odometer);
                 data = validMpg.map(h => h.mpg);
                 labelStr = 'MPG vs Miles';
-                color = '#2563EB'; // Blue
+                color = '#2563EB'; 
             } else {
-                // X: Date, Y: Price
                 labels = dataPoints.map(h => h.date);
                 data = dataPoints.map(h => h.price);
                 labelStr = 'Gas Price ($)';
-                color = '#059669'; // Green
+                color = '#059669'; 
             }
 
             chartInstance = new Chart(ctx, {
@@ -504,7 +629,7 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { display: activeChartType === 'price', ticks: { maxTicksLimit: 5 } }, // Hide X labels for odometer to keep clean
+                        x: { display: activeChartType === 'price', ticks: { maxTicksLimit: 5 } }, 
                         y: { beginAtZero: false }
                     }
                 }
@@ -512,38 +637,28 @@
         }
 
         window.render = function() {
-            // Update Vehicle Select
             const select = document.getElementById('vehicleSelect');
             select.innerHTML = appState.vehicles.map(v => 
                 `<option value="${v.id}" ${v.id === appState.activeVehicle ? 'selected' : ''}>${v.name}</option>`
             ).join('');
 
-            // Process Data
             const currentLogs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle);
             const history = getCalculatedHistory(currentLogs);
 
-            // Overall Stats
             let totalMiles = 0, totalGallons = 0;
-            // Only calc overall for segments that completed a full cycle
-            // Simple approach: (Last Full Odo - First Full Odo) / Sum of Gallons between them
-            // Complex but robust: Sum up all MPG-valid segments
-            // Simplified for display:
             if (currentLogs.length > 1) {
                 totalMiles = currentLogs[currentLogs.length - 1].odometer - currentLogs[0].odometer;
-                // Sum all gallons except the very first fill (baseline)
                 for(let i=1; i<currentLogs.length; i++) totalGallons += currentLogs[i].gallons;
             }
             const overall = totalGallons > 0 ? (totalMiles / totalGallons).toFixed(1) : '--';
-            const lastEntry = history.find(h => h.mpg > 0); // Find first entry with calculated MPG
+            const lastEntry = history.find(h => h.mpg > 0);
             const last = lastEntry ? lastEntry.mpg.toFixed(1) : '--';
 
             document.getElementById('overallMpg').innerText = overall;
             document.getElementById('lastMpg').innerText = last;
 
-            // Render Chart
             renderChart(history);
 
-            // Render List
             const listEl = document.getElementById('historyList');
             const emptyEl = document.getElementById('emptyState');
             
@@ -589,8 +704,6 @@
                     </div>`;
                 }).join('');
             }
-
-            // Settings List
             const vList = document.getElementById('vehicleList');
             vList.innerHTML = appState.vehicles.map(v => `
                 <div class="flex justify-between p-2 bg-gray-50 rounded mb-1 items-center">
