@@ -281,6 +281,10 @@
                 currentUser = null;
                 // Show Overlay
                 document.getElementById('loginOverlay').classList.remove('opacity-0', 'pointer-events-none');
+                
+                // Force close settings modal if open
+                document.getElementById('settingsModal').classList.add('hidden');
+                
                 appState.logs = [];
                 appState.vehicles = [];
                 // Do not render empty state behind overlay, just wait
