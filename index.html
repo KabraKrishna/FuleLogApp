@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fuel Tracker Pro v5.0</title>
+    <title>Fuel Tracker Pro v6.0</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -24,6 +24,29 @@
     </style>
 </head>
 <body class="bg-gray-100 text-slate-800 font-sans min-h-screen pb-32">
+
+    <!-- Login Overlay (Gatekeeper) -->
+    <!-- This div covers the entire screen until the user logs in -->
+    <div id="loginOverlay" class="fixed inset-0 z-50 bg-blue-600 flex flex-col items-center justify-center p-6 text-white transition-opacity duration-500">
+        <div class="text-center space-y-6 max-w-sm w-full">
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto shadow-xl">
+                <i class="fas fa-gas-pump text-4xl text-blue-600"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-bold">Fuel Tracker Pro</h1>
+                <p class="text-blue-200 mt-2">Private Cloud Edition</p>
+            </div>
+            
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-lg">
+                <button onclick="window.loginGoogle()" class="w-full bg-white text-gray-800 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-50 flex items-center justify-center gap-3 transition transform active:scale-95">
+                    <i class="fab fa-google text-red-500 text-xl"></i>
+                    <span>Sign in with Google</span>
+                </button>
+            </div>
+            <p class="text-xs text-blue-300">Authorized Access Only</p>
+            <p id="authErrorMsg" class="text-xs text-red-300 hidden"></p>
+        </div>
+    </div>
 
     <!-- Top Nav -->
     <nav class="bg-blue-600 text-white p-3 sticky top-0 z-40 shadow-md">
@@ -165,14 +188,10 @@
 
             <!-- Auth Section -->
             <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
-                <p id="userStatus" class="text-xs text-gray-500 mb-2">Logged in as Guest</p>
-                <button id="loginBtn" onclick="window.loginGoogle()" class="w-full bg-white text-gray-700 font-bold py-2 px-4 rounded shadow border flex items-center justify-center gap-2 hover:bg-gray-50">
-                    <i class="fab fa-google text-red-500"></i> Sign in with Google
-                </button>
-                <button id="logoutBtn" onclick="window.logout()" class="hidden w-full bg-white text-red-500 font-bold py-2 px-4 rounded shadow border hover:bg-red-50">
+                <p id="userStatus" class="text-xs text-gray-500 mb-2 font-bold text-green-600"></p>
+                <button id="logoutBtn" onclick="window.logout()" class="w-full bg-white text-red-500 font-bold py-2 px-4 rounded shadow border hover:bg-red-50">
                     Sign Out
                 </button>
-                <p class="text-[10px] text-gray-400 mt-2">Sign in to sync data across devices.</p>
             </div>
 
             <div class="space-y-3">
@@ -200,13 +219,12 @@
     <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
-        // --- 1. CONFIGURATION START ---
+        // --- CONFIGURATION ---
         // ==========================================
-        
         let firebaseConfig = {
             apiKey: "AIzaSyAc_OjXWuMB6zDuKXi5xGNI_a30o2J5aoY",
             authDomain: "fuel-tracker-pro-2d87d.firebaseapp.com",
@@ -217,6 +235,7 @@
             measurementId: "G-DFPYH0YLM9"
         };
 
+        // Attempt to load from env for preview, otherwise rely on manual config
         if (typeof __firebase_config !== 'undefined') {
             try { firebaseConfig = JSON.parse(__firebase_config); } 
             catch (e) { console.warn("Could not parse env config", e); }
@@ -244,63 +263,49 @@
         // --- Auth Logic ---
         const provider = new GoogleAuthProvider();
 
-        // 1. Listen for Auth State Changes
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // Logged In
                 currentUser = user;
-                updateAuthUI(user);
-                await checkAndMigrateData(user); // Check for old localstorage data
+                // Hide Overlay
+                document.getElementById('loginOverlay').classList.add('opacity-0', 'pointer-events-none');
+                
+                // Update Settings UI
+                document.getElementById('userStatus').innerText = `Logged in as ${user.displayName || user.email}`;
+                
+                // Only sync if logged in
+                await checkAndMigrateData(user);
                 setupListeners(user);
             } else {
-                // If logged out, fallback to anonymous for guest access
-                signInAnonymously(auth).catch(error => {
-                    console.error("Auth Error:", error);
-                    // Handle Referrer Restriction Error Gracefully
-                    if (error.code === 'auth/requests-from-referer-null-are-blocked') {
-                        alert("Firebase Configuration Error:\n\nYour API Key has 'HTTP Referrer' restrictions enabled, but this app is running locally or in a preview where the referrer is null.\n\nPlease go to Google Cloud Console > Credentials > API Key and add 'localhost' or disable restrictions temporarily.");
-                    } else {
-                        // Other auth errors
-                        console.warn("Guest auth failed. Features requiring auth may be disabled.");
-                    }
-                });
+                // Logged Out
+                currentUser = null;
+                // Show Overlay
+                document.getElementById('loginOverlay').classList.remove('opacity-0', 'pointer-events-none');
+                appState.logs = [];
+                appState.vehicles = [];
+                // Do not render empty state behind overlay, just wait
             }
         });
 
-        // 2. Login Function
         window.loginGoogle = async function() {
             try {
+                const errorMsg = document.getElementById('authErrorMsg');
+                errorMsg.classList.add('hidden');
                 await signInWithPopup(auth, provider);
-                // Page will likely reload or onAuthStateChanged will trigger
             } catch (error) {
-                alert("Login Failed: " + error.message);
                 console.error(error);
+                const errorMsg = document.getElementById('authErrorMsg');
+                errorMsg.innerText = "Login Failed: " + error.message;
+                errorMsg.classList.remove('hidden');
             }
         };
 
-        // 3. Logout Function
         window.logout = async function() {
             if(confirm("Sign out?")) {
                 await signOut(auth);
-                window.location.reload();
+                // Overlay will reappear automatically via onAuthStateChanged
             }
         };
-
-        function updateAuthUI(user) {
-            const statusEl = document.getElementById('userStatus');
-            const loginBtn = document.getElementById('loginBtn');
-            const logoutBtn = document.getElementById('logoutBtn');
-
-            if (user.isAnonymous) {
-                statusEl.innerText = "Logged in as Guest (Data local to this device)";
-                loginBtn.classList.remove('hidden');
-                logoutBtn.classList.add('hidden');
-            } else {
-                statusEl.innerText = `Logged in as ${user.displayName || user.email}`;
-                statusEl.classList.add('text-green-600', 'font-bold');
-                loginBtn.classList.add('hidden');
-                logoutBtn.classList.remove('hidden');
-            }
-        }
 
         // --- Migration from LocalStorage (Old versions) ---
         async function checkAndMigrateData(user) {
@@ -347,6 +352,7 @@
                 snapshot.forEach(doc => appState.vehicles.push(doc.data()));
                 
                 if (appState.vehicles.length === 0) {
+                    // Create default vehicle if user has none
                     window.addVehicle('My Car');
                 } else {
                     const exists = appState.vehicles.find(v => v.id === appState.activeVehicle);
@@ -355,6 +361,13 @@
                         localStorage.setItem('lastActiveVehicle', appState.activeVehicle);
                     }
                     window.render();
+                }
+            }, (error) => {
+                console.error("Vehicle Listen Error:", error);
+                if (error.code === 'permission-denied') {
+                    // This handles the case where rules prevent access
+                    document.getElementById('authErrorMsg').innerText = "Database Access Denied. Check your Firestore Rules.";
+                    document.getElementById('authErrorMsg').classList.remove('hidden');
                 }
             });
 
