@@ -320,7 +320,7 @@
         // ==========================================
         
         // 1. Set to FALSE for production deployment
-        const IS_DEV_MODE = false; 
+        const IS_DEV_MODE = true; 
         
         // 2. IMPORTANT: Consistent ID for data path
         const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
@@ -334,15 +334,7 @@
             ]
         };
 
-        let firebaseConfig = {
-            apiKey: "AIzaSyAc_OjXWuMB6zDuKXi5xGNI_a30o2J5aoY",
-            authDomain: "fuel-tracker-pro-2d87d.firebaseapp.com",
-            projectId: "fuel-tracker-pro-2d87d",
-            storageBucket: "fuel-tracker-pro-2d87d.firebasestorage.app",
-            messagingSenderId: "1083986513796",
-            appId: "1:1083986513796:web:c8cbd5e0047e49093c97d1",
-            measurementId: "G-DFPYH0YLM9"
-        };
+        let firebaseConfig = {};
 
         if (!IS_DEV_MODE) {
             if (typeof __firebase_config !== 'undefined') {
