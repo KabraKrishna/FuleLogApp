@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fuel Tracker Pro v2.0.0</title>
+    <title>Fuel Tracker Pro v2.0.1</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -315,8 +315,16 @@
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const IS_DEV_MODE = false; // Set to FALSE for production
+        // ==========================================
+        // --- CONFIGURATION ---
+        // ==========================================
         
+        // 1. Set to FALSE for production deployment
+        const IS_DEV_MODE = false; 
+        
+        // 2. IMPORTANT: Consistent ID for data path
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
+
         const DUMMY_DATA = {
             "vehicles": [{"id": "v_dummy", "name": "My Car (Dev Mode)"}],
             "logs": [
@@ -355,11 +363,9 @@
             const html = document.documentElement;
             const isDark = html.classList.toggle('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            // Re-render chart if visible because colors need to update
             window.render();
         }
         
-        // Init Theme
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -420,23 +426,23 @@
             login: async () => { try { await signInWithPopup(FirebaseService.auth, FirebaseService.provider); } catch (e) { alert("Login Failed: " + e.message); } },
             logout: async () => { if (confirm("Sign out?")) await signOut(FirebaseService.auth); },
             saveLog: async (log) => {
-                const USER_ROOT = `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker'}/users/${currentUser.uid}`;
+                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
                 await setDoc(doc(FirebaseService.db, USER_ROOT, 'logs', log.id), log);
             },
             deleteLog: async (id) => {
-                const USER_ROOT = `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker'}/users/${currentUser.uid}`;
+                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
                 await deleteDoc(doc(FirebaseService.db, USER_ROOT, 'logs', id));
             },
             saveVehicle: async (v) => {
-                const USER_ROOT = `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker'}/users/${currentUser.uid}`;
+                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
                 await setDoc(doc(FirebaseService.db, USER_ROOT, 'vehicles', v.id), v);
             },
             deleteVehicle: async (id) => {
-                const USER_ROOT = `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker'}/users/${currentUser.uid}`;
+                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
                 await deleteDoc(doc(FirebaseService.db, USER_ROOT, 'vehicles', id));
             },
             setupListeners: (user) => {
-                const USER_ROOT = `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker'}/users/${user.uid}`;
+                const USER_ROOT = `artifacts/${APP_ID}/users/${user.uid}`;
                 onSnapshot(collection(FirebaseService.db, USER_ROOT, 'vehicles'), (snap) => {
                     const vehicles = []; snap.forEach(d => vehicles.push(d.data()));
                     appState.vehicles = vehicles; checkDefaultVehicle(); window.render();
@@ -505,7 +511,6 @@
             const serviceFields = document.getElementById('serviceFields');
             const partialContainer = document.getElementById('partialContainer');
             
-            // Required Logic
             const fuelInputs = fuelFields.querySelectorAll('input');
             const serviceInputs = serviceFields.querySelectorAll('input, select');
 
@@ -540,11 +545,9 @@
 
         // --- Render Modern List ---
         function getCalculatedHistory(vehicleLogs) {
-            // Split into fuel and service
             const fuelLogs = vehicleLogs.filter(l => !l.type || l.type === 'fuel');
             const serviceLogs = vehicleLogs.filter(l => l.type === 'service');
             
-            // Calculate Fuel History
             fuelLogs.sort((a,b) => a.odometer - b.odometer);
             let history = [];
             let pendingGallons = 0, pendingCost = 0, lastFullLog = fuelLogs[0]; 
@@ -566,16 +569,7 @@
                 }
             }
 
-            // Merge Service Logs
-            // Service logs don't need calculation, just formatting
-            const serviceHistory = serviceLogs.map(l => ({
-                ...l,
-                mpg: 0,
-                cost: l.serviceCost || 0,
-                type: 'service'
-            }));
-
-            // Combine and Sort by Date (Newest First)
+            const serviceHistory = serviceLogs.map(l => ({ ...l, mpg: 0, cost: l.serviceCost || 0, type: 'service' }));
             const combined = [...history, ...serviceHistory];
             combined.sort((a,b) => new Date(b.date) - new Date(a.date));
             return combined;
@@ -588,7 +582,6 @@
             const currentLogs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle);
             const history = getCalculatedHistory(currentLogs);
 
-            // Calc Dashboard Stats (Fuel Only for MPG, All for Cost)
             const fuelLogs = currentLogs.filter(l => !l.type || l.type === 'fuel').sort((a,b) => a.odometer - b.odometer);
             
             let totalMiles = 0, totalFuelGallons = 0, totalFuelCost = 0;
@@ -600,7 +593,6 @@
                 }
             }
             
-            // Total Spent = Fuel + Service
             let totalServiceCost = currentLogs.filter(l=>l.type==='service').reduce((sum, l) => sum + (parseFloat(l.serviceCost)||0), 0);
             let absTotalSpent = currentLogs.filter(l=>!l.type||l.type==='fuel').reduce((sum, l) => sum + (l.gallons * l.price), 0) + totalServiceCost;
 
@@ -617,7 +609,6 @@
 
             renderMainChart(history);
 
-            // Modern List Rendering
             const listEl = document.getElementById('historyList');
             const emptyEl = document.getElementById('emptyState');
             if (history.length === 0) { listEl.innerHTML = ''; emptyEl.classList.remove('hidden'); } 
@@ -629,7 +620,6 @@
                     const month = dateObj.toLocaleString('en-US', { month: 'short' });
                     
                     if (item.type === 'service') {
-                        // SERVICE LOG RENDER
                         return `
                         <div onclick="window.editEntry('${item.id}')" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-l-4 border-purple-500 dark:border-purple-600 active:scale-[0.98] transition-transform cursor-pointer flex justify-between items-center group">
                             <div class="flex items-center gap-4">
@@ -648,7 +638,6 @@
                             </div>
                         </div>`;
                     } else {
-                        // FUEL LOG RENDER
                         let mpgBadge = '';
                         if(item.isStart) mpgBadge = `<span class="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-bold px-2 py-1 rounded">START</span>`;
                         else if(item.isPartialLog) mpgBadge = `<span class="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-bold px-2 py-1 rounded">PARTIAL</span>`;
@@ -676,7 +665,6 @@
                 }).join('');
             }
             
-            // Settings List
             document.getElementById('vehicleList').innerHTML = appState.vehicles.map(v => `
                 <div class="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded mb-1 items-center">
                     <span class="text-sm dark:text-white ${v.id===appState.activeVehicle?'font-bold text-blue-600 dark:text-blue-400':''}">${v.name}</span>
@@ -687,16 +675,12 @@
         window.editEntry = function(id) {
             const log = appState.logs.find(l => String(l.id) === String(id));
             if (!log) return;
-            
-            // Set fields based on type
             const isService = log.type === 'service';
             window.setLogType(isService ? 'service' : 'fuel');
-            
             document.getElementById('entryId').value = log.id;
             document.getElementById('date').value = log.date;
             document.getElementById('odometer').value = log.odometer;
             document.getElementById('notes').value = log.notes || '';
-            
             if(isService) {
                 document.getElementById('serviceType').value = log.serviceType;
                 document.getElementById('serviceCost').value = log.serviceCost;
@@ -705,11 +689,9 @@
                 document.getElementById('price').value = log.price;
                 document.getElementById('isPartial').checked = !!log.isPartial;
             }
-            
             document.getElementById('formTitle').innerText = "Edit Entry";
             document.getElementById('submitBtnText').innerText = "Update Log";
             document.getElementById('deleteBtn').classList.remove('hidden'); 
-            
             window.openAddLog(true);
         };
 
@@ -718,9 +700,7 @@
             document.getElementById('entryId').value = '';
             document.getElementById('date').valueAsDate = new Date();
             document.getElementById('isPartial').checked = false;
-            // Default to Fuel
             window.setLogType('fuel');
-            
             document.getElementById('formTitle').innerText = "New Entry";
             document.getElementById('submitBtnText').innerText = "Save Log"; 
             document.getElementById('deleteBtn').classList.add('hidden');
@@ -734,7 +714,6 @@
             }
         };
 
-        // --- Other Window Methods ---
         window.handleFormSubmit = async function(e) {
             e.preventDefault(); if (!currentUser) return;
             const submitBtn = document.getElementById('submitBtn');
@@ -745,7 +724,6 @@
             try {
                 const id = document.getElementById('entryId').value;
                 const type = document.getElementById('logType').value;
-                
                 let logData = {
                     id: id || Date.now().toString(36),
                     vehicleId: appState.activeVehicle,
@@ -754,7 +732,6 @@
                     odometer: parseFloat(document.getElementById('odometer').value),
                     notes: document.getElementById('notes').value,
                 };
-
                 if (type === 'fuel') {
                     logData.gallons = parseFloat(document.getElementById('gallons').value);
                     logData.price = parseFloat(document.getElementById('price').value) || 0;
@@ -764,7 +741,6 @@
                     logData.serviceType = document.getElementById('serviceType').value;
                     logData.serviceCost = parseFloat(document.getElementById('serviceCost').value) || 0;
                 }
-
                 await Service.saveLog(logData);
                 window.closeAddLog();
             } catch (err) { alert(err.message); } 
@@ -787,7 +763,7 @@
              }).join("\n");
              const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "export.csv"; a.click();
         };
-        window.importData = function(i) { const f = i.files[0]; const r = new FileReader(); r.onload = async(e) => { const j = JSON.parse(e.target.result); if(confirm("Import?")) { if(IS_DEV_MODE) { localStorage.setItem('dev_mode_data', JSON.stringify(j)); MockService.triggerListeners(); } else { const b = writeBatch(FirebaseService.db); const R = `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker'}/users/${currentUser.uid}`; j.vehicles.forEach(v=>b.set(doc(FirebaseService.db,R,'vehicles',v.id),v)); j.logs.forEach(l=>b.set(doc(FirebaseService.db,R,'logs',l.id||Date.now().toString()),l)); await b.commit(); } window.toggleSettings(); }}; r.readAsText(f); };
+        window.importData = function(i) { const f = i.files[0]; const r = new FileReader(); r.onload = async(e) => { const j = JSON.parse(e.target.result); if(confirm("Import?")) { if(IS_DEV_MODE) { localStorage.setItem('dev_mode_data', JSON.stringify(j)); MockService.triggerListeners(); } else { const b = writeBatch(FirebaseService.db); const R = `artifacts/${APP_ID}/users/${currentUser.uid}`; j.vehicles.forEach(v=>b.set(doc(FirebaseService.db,R,'vehicles',v.id),v)); j.logs.forEach(l=>b.set(doc(FirebaseService.db,R,'logs',l.id||Date.now().toString()),l)); await b.commit(); } window.toggleSettings(); }}; r.readAsText(f); };
         
         function renderMainChart(h) {
             const ctx = document.getElementById('mainChart').getContext('2d');
@@ -798,7 +774,6 @@
             else valid = sorted.filter(x => x.price > 0);
             const d = activeChartType === 'mpg' ? valid.map(x => x.mpg) : valid.map(x => x.price);
             
-            // Theme Colors
             const isDark = document.documentElement.classList.contains('dark');
             const gridColor = isDark ? '#374151' : '#E5E7EB';
             const textColor = isDark ? '#9CA3AF' : '#6B7280';
@@ -832,7 +807,6 @@
             activeChartType = type;
             const btnMpg = document.getElementById('btn-chart-mpg');
             const btnPrice = document.getElementById('btn-chart-price');
-            // Reset Classes
             const activeClass = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
             const inactiveClass = "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400";
             
