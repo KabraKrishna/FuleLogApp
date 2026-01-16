@@ -236,7 +236,7 @@
         // CONFIG
         // ==========================================
         const hostname = window.location.hostname;
-        const IS_DEV_MODE = true;//hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-') || new URLSearchParams(window.location.search).get('mode') === 'dev';
+        const IS_DEV_MODE = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-') || new URLSearchParams(window.location.search).get('mode') === 'dev';
         const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
 
         const DUMMY_DATA = {
