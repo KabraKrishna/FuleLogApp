@@ -205,6 +205,12 @@
                 <h3 class="text-lg font-bold text-gray-800 dark:text-white">Settings</h3>
                 <button onclick="window.toggleSettings()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="fas fa-times text-xl"></i></button>
             </div>
+            <!-- Install PWA Button (Hidden by default) -->
+            <div id="installAppContainer" class="hidden">
+                 <button onclick="window.installPWA()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 p-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 mb-4">
+                    <i class="fas fa-download"></i> Install App to Home Screen
+                </button>
+            </div>
             <!-- Dark Mode Toggle -->
             <div class="flex items-center justify-between">
                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Dark Mode</span>
@@ -217,7 +223,7 @@
             <!-- Data -->
             <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800"><h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Data Actions</h4><div class="grid grid-cols-2 gap-3"><button onclick="window.exportData()" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 p-3 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300"><i class="fas fa-download mr-1"></i> JSON Backup</button><label for="fileInput" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 p-3 rounded-lg text-sm font-bold text-center cursor-pointer text-gray-700 dark:text-gray-300"><i class="fas fa-upload mr-1"></i> JSON Restore</label></div><button onclick="window.exportCSV()" class="w-full bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 p-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2"><i class="fas fa-file-csv"></i> Export to Excel / CSV</button><input type="file" id="fileInput" class="hidden" onchange="window.importData(this)" accept=".json"></div>
             <!-- Version Footer -->
-            <div class="text-center pt-2"><p class="text-[10px] text-gray-300 dark:text-gray-600">v2.1.0 • 2026</p></div>
+            <div class="text-center pt-2"><p class="text-[10px] text-gray-300 dark:text-gray-600">v2.1.1 • 2026</p></div>
         </div>
     </div>
 
@@ -230,7 +236,7 @@
         // CONFIG
         // ==========================================
         const hostname = window.location.hostname;
-        const IS_DEV_MODE = true; //hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-') || new URLSearchParams(window.location.search).get('mode') === 'dev';
+        const IS_DEV_MODE = true;//hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-') || new URLSearchParams(window.location.search).get('mode') === 'dev';
         const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
 
         const DUMMY_DATA = {
@@ -245,11 +251,30 @@
         if ('serviceWorker' in navigator && !IS_DEV_MODE) {
             navigator.serviceWorker.register('sw.js').then(() => console.log("SW Registered")).catch(e => console.log("SW Fail", e));
         }
+        
+        // PWA Install Prompt Logic
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installAppContainer').classList.remove('hidden');
+        });
+        
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('installAppContainer').classList.add('hidden');
+                }
+                deferredPrompt = null;
+            }
+        };
 
         let firebaseConfig = {};
         if (!IS_DEV_MODE) {
             if (typeof __firebase_config !== 'undefined') try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {}
-            if (!firebaseConfig.apiKey) document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase Config Missing.</div>`;
+            if (!firebaseConfig || !firebaseConfig.apiKey) document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase Config Missing.</div>`;
         }
 
         let currentUser = null;
