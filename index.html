@@ -271,7 +271,16 @@
             }
         };
 
-        let firebaseConfig = {};
+        let firebaseConfig = {
+            apiKey: "AIzaSyAc_OjXWuMB6zDuKXi5xGNI_a30o2J5aoY",
+            authDomain: "fuel-tracker-pro-2d87d.firebaseapp.com",
+            projectId: "fuel-tracker-pro-2d87d",
+            storageBucket: "fuel-tracker-pro-2d87d.firebasestorage.app",
+            messagingSenderId: "1083986513796",
+            appId: "1:1083986513796:web:c8cbd5e0047e49093c97d1",
+            measurementId: "G-DFPYH0YLM9"
+        };
+        
         if (!IS_DEV_MODE) {
             if (typeof __firebase_config !== 'undefined') try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {}
             if (!firebaseConfig || !firebaseConfig.apiKey) document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase Config Missing.</div>`;
