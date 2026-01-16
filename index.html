@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fuel Tracker Pro v2.0.1</title>
+    <title>Fuel Tracker Pro</title>
+    
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+    <meta name="theme-color" content="#2563EB">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,17 +29,12 @@
         html { scroll-behavior: smooth; }
         .edit-mode { border: 2px solid #f59e0b; background-color: #fffbeb; }
         body { overscroll-behavior-y: none; }
-        /* Scroll Lock Class */
         body.scroll-locked { overflow: hidden; }
-        
-        /* Loading spinner */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Toggle Switch */
         .toggle-checkbox:checked { right: 0; border-color: #2563EB; }
         .toggle-checkbox:checked + .toggle-label { background-color: #2563EB; }
-        /* Hide scrollbar */
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-slate-800 dark:text-gray-100 font-sans min-h-screen pb-24 transition-colors duration-200">
@@ -69,7 +72,6 @@
                     <i class="fas fa-cog"></i>
                 </button>
             </div>
-            <!-- Vehicle Selector -->
             <div class="relative">
                 <select id="vehicleSelect" onchange="window.switchVehicle(this.value)" 
                     class="w-full bg-blue-700 dark:bg-gray-700 text-white border border-blue-500 dark:border-gray-600 text-sm rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500 font-semibold appearance-none transition-colors">
@@ -84,176 +86,112 @@
     <!-- Main Content -->
     <div class="max-w-3xl mx-auto p-4 relative space-y-6">
 
-        <!-- 1. Bento Box Stats -->
-        <div class="grid grid-cols-3 gap-3">
-            <!-- Hero Card -->
-            <div class="col-span-2 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 rounded-2xl p-4 text-white flex flex-col justify-between relative overflow-hidden shadow-lg h-full min-h-[140px]">
-                <div class="relative z-10 flex justify-between items-start">
-                    <div>
-                        <p class="text-[10px] font-bold text-blue-200 uppercase tracking-wider flex items-center gap-1">
-                            Efficiency
-                        </p>
-                        <div class="flex items-baseline mt-1">
-                            <p class="text-4xl font-black tracking-tight" id="overallMpg">--</p>
-                            <span class="text-sm ml-1 font-medium text-blue-200">MPG</span>
+        <!-- DASHBOARD -->
+        <div id="tab-dashboard" class="space-y-6 animate-fade-in">
+            <div class="grid grid-cols-3 gap-3">
+                <!-- Hero Card -->
+                <div onclick="window.switchTab('analytics')" class="col-span-2 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 rounded-2xl p-4 text-white flex flex-col justify-between relative overflow-hidden shadow-lg h-full min-h-[140px] cursor-pointer active:scale-95 transition-transform">
+                    <div class="relative z-10 flex justify-between items-start">
+                        <div>
+                            <p class="text-[10px] font-bold text-blue-200 uppercase tracking-wider flex items-center gap-1">Efficiency <i class="fas fa-arrow-right -rotate-45 text-[8px]"></i></p>
+                            <div class="flex items-baseline mt-1">
+                                <p class="text-4xl font-black tracking-tight" id="overallMpg">--</p>
+                                <span class="text-sm ml-1 font-medium text-blue-200">MPG</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="mt-4 relative z-10">
+                        <p class="text-[10px] text-blue-200 uppercase font-bold">Distance Tracked</p>
+                        <p class="text-sm font-bold" id="totalMilesDisplay">-- mi</p>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-blue-500 opacity-20 pointer-events-none"><i class="fas fa-tachometer-alt text-8xl"></i></div>
                 </div>
-                <div class="mt-4 relative z-10">
-                    <p class="text-[10px] text-blue-200 uppercase font-bold">Distance Tracked</p>
-                    <p class="text-sm font-bold" id="totalMilesDisplay">-- mi</p>
-                </div>
-                <div class="absolute -right-4 -bottom-4 text-blue-500 opacity-20 pointer-events-none">
-                    <i class="fas fa-tachometer-alt text-8xl"></i>
+                <!-- Side Stack -->
+                <div class="col-span-1 flex flex-col gap-3 h-full">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex-1 flex flex-col justify-center text-center">
+                        <p class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider">Last Tank</p>
+                        <p class="text-lg font-black text-green-600 dark:text-green-400 leading-none mt-1" id="lastMpg">--</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex-1 flex flex-col justify-center text-center">
+                        <p class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider">Cost/Mi</p>
+                        <p class="text-lg font-black text-orange-600 dark:text-orange-400 leading-none mt-1" id="costPerMile">--</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex-1 flex flex-col justify-center text-center">
+                        <p class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider">Total</p>
+                        <p class="text-sm font-black text-purple-700 dark:text-purple-400 leading-none mt-1 break-all" id="totalSpent">--</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Side Stack -->
-            <div class="col-span-1 flex flex-col gap-3 h-full">
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex-1 flex flex-col justify-center text-center">
-                    <p class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider">Last Tank</p>
-                    <p class="text-lg font-black text-green-600 dark:text-green-400 leading-none mt-1" id="lastMpg">--</p>
-                    <p class="text-[9px] text-gray-300 dark:text-gray-600">mpg</p>
+            <!-- Analytics Preview -->
+            <div>
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <h2 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trends</h2>
+                    <div class="space-x-2">
+                        <button onclick="window.switchChart('mpg')" id="btn-chart-mpg" class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-bold transition">MPG</button>
+                        <button onclick="window.switchChart('price')" id="btn-chart-price" class="text-xs px-3 py-1 bg-gray-100 text-gray-500 rounded-full font-bold transition">Price</button>
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex-1 flex flex-col justify-center text-center">
-                    <p class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider">Cost/Mi</p>
-                    <p class="text-lg font-black text-orange-600 dark:text-orange-400 leading-none mt-1" id="costPerMile">--</p>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-100 dark:border-gray-700 relative h-64">
+                    <canvas id="mainChart"></canvas>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex-1 flex flex-col justify-center text-center">
-                    <p class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider">Total</p>
-                    <p class="text-sm font-black text-purple-700 dark:text-purple-400 leading-none mt-1 break-all" id="totalSpent">--</p>
+            </div>
+
+            <!-- History List -->
+            <div>
+                <div class="flex justify-between items-center mb-3 ml-1">
+                    <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">History</h3>
+                    <span class="text-[10px] text-gray-400">Tap item to edit</span>
+                </div>
+                <div id="historyList" class="space-y-3 pb-32"></div>
+                <div id="emptyState" class="hidden text-center py-10 text-gray-400">
+                    <i class="fas fa-clipboard-list text-4xl mb-2 opacity-50"></i>
+                    <p>No logs found for this vehicle.</p>
                 </div>
             </div>
         </div>
-
-        <!-- 2. Analytics Charts -->
-        <div>
-            <div class="flex justify-between items-center mb-2 px-1">
-                <h2 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trends</h2>
-                <div class="space-x-2">
-                    <button onclick="window.switchChart('mpg')" id="btn-chart-mpg" class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-bold transition">MPG</button>
-                    <button onclick="window.switchChart('price')" id="btn-chart-price" class="text-xs px-3 py-1 bg-gray-100 text-gray-500 rounded-full font-bold transition">Price</button>
-                </div>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-100 dark:border-gray-700 relative h-64">
-                <canvas id="mainChart"></canvas>
-            </div>
-        </div>
-
-        <!-- 3. History List -->
-        <div>
-            <div class="flex justify-between items-center mb-3 ml-1">
-                <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">History</h3>
-                <span class="text-[10px] text-gray-400">Tap item to edit</span>
-            </div>
-            
-            <div id="historyList" class="space-y-3 pb-32">
-                <div class="text-center py-10">
-                    <div class="loader mx-auto mb-2"></div>
-                    <p class="text-xs text-gray-400">Loading Cloud Data...</p>
-                </div>
-            </div>
-            <div id="emptyState" class="hidden text-center py-10 text-gray-400">
-                <i class="fas fa-clipboard-list text-4xl mb-2 opacity-50"></i>
-                <p>No logs found for this vehicle.</p>
-            </div>
-        </div>
-
     </div>
 
-    <!-- Floating Action Button (FAB) -->
+    <!-- FAB -->
     <button onclick="window.openAddLog()" class="fixed bottom-8 right-6 z-40 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition transform active:scale-90">
         <i class="fas fa-plus text-2xl"></i>
     </button>
 
-    <!-- Entry Form Bottom Sheet (Rising Panel) -->
+    <!-- Entry Form Sheet -->
     <div id="entrySheetWrapper" class="fixed inset-0 z-50 invisible bg-black/50 transition-all duration-300 backdrop-blur-sm flex items-end" onclick="if(event.target === this) window.closeAddLog()">
         <div id="entrySheet" class="w-full bg-white dark:bg-gray-900 rounded-t-2xl p-6 transform translate-y-full transition-transform duration-300 ease-out max-w-3xl mx-auto max-h-[90vh] overflow-y-auto border-t border-gray-200 dark:border-gray-800">
-            
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-gray-800 dark:text-white" id="formTitle">New Entry</h2>
-                <button onclick="window.closeAddLog()" class="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button onclick="window.closeAddLog()" class="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"><i class="fas fa-times"></i></button>
             </div>
-
             <!-- Type Switcher -->
             <div class="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg mb-6">
                 <button type="button" onclick="window.setLogType('fuel')" id="typeBtnFuel" class="flex-1 py-2 text-sm font-bold rounded-md shadow-sm bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 transition-all">Fuel</button>
                 <button type="button" onclick="window.setLogType('service')" id="typeBtnService" class="flex-1 py-2 text-sm font-bold rounded-md text-gray-500 dark:text-gray-400 transition-all">Service</button>
             </div>
-
             <form id="entryForm" onsubmit="window.handleFormSubmit(event)" class="space-y-5">
                 <input type="hidden" id="entryId">
                 <input type="hidden" id="logType" value="fuel">
-
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Date</label>
-                        <input type="date" id="date" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Odometer</label>
-                        <input type="number" id="odometer" placeholder="85000" required inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white">
-                    </div>
+                    <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Date</label><input type="date" id="date" required class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Odometer</label><input type="number" id="odometer" placeholder="85000" required inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></div>
                 </div>
-
-                <!-- FUEL FIELDS -->
                 <div id="fuelFields" class="grid grid-cols-2 gap-4 transition-all duration-300">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Gallons</label>
-                        <input type="number" id="gallons" step="0.001" placeholder="12.5" inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Price/Gal ($)</label>
-                        <input type="number" id="price" step="0.01" placeholder="2.50" inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white">
-                    </div>
+                    <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Gallons</label><input type="number" id="gallons" step="0.001" placeholder="12.5" inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></div>
+                    <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Price/Gal ($)</label><input type="number" id="price" step="0.01" placeholder="2.50" inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></div>
                 </div>
-
-                <!-- SERVICE FIELDS (Hidden by default) -->
                 <div id="serviceFields" class="hidden grid-cols-2 gap-4 transition-all duration-300">
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Service Type</label>
-                        <select id="serviceType" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white">
-                            <option value="Oil Change">Oil Change</option>
-                            <option value="Tire Rotation">Tire Rotation</option>
-                            <option value="Inspection">Inspection</option>
-                            <option value="Maintenance">Maintenance</option>
-                            <option value="Repair">Repair</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Total Cost ($)</label>
-                        <input type="number" id="serviceCost" step="0.01" placeholder="50.00" inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white">
-                    </div>
+                    <div class="col-span-2"><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Service Type</label><select id="serviceType" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"><option value="Oil Change">Oil Change</option><option value="Tire Rotation">Tire Rotation</option><option value="Inspection">Inspection</option><option value="Maintenance">Maintenance</option><option value="Repair">Repair</option><option value="Other">Other</option></select></div>
+                    <div class="col-span-2"><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Total Cost ($)</label><input type="number" id="serviceCost" step="0.01" placeholder="50.00" inputmode="decimal" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></div>
                 </div>
-
-                <!-- Partial Toggle (Fuel Only) -->
                 <div id="partialContainer" class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Partial Fill?</span>
-                        <span class="text-[10px] text-gray-400">Did not fill to top</span>
-                    </div>
-                    <div class="relative inline-block w-10 mr-2 align-middle select-none">
-                        <input type="checkbox" name="isPartial" id="isPartial" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/>
-                        <label for="isPartial" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                    </div>
+                    <div class="flex flex-col"><span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Partial Fill?</span><span class="text-[10px] text-gray-400">Did not fill to top</span></div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none"><input type="checkbox" name="isPartial" id="isPartial" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/><label for="isPartial" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label></div>
                 </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Notes</label>
-                    <textarea id="notes" rows="2" placeholder="Optional notes..." class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></textarea>
-                </div>
-
+                <div><label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Notes</label><textarea id="notes" rows="2" placeholder="Optional notes..." class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white"></textarea></div>
                 <div class="flex gap-3">
-                    <button type="button" id="deleteBtn" onclick="window.deleteCurrentEntry()" class="hidden w-1/3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold py-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition">
-                        Delete
-                    </button>
-                    <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 active:scale-95 text-white font-bold py-3 rounded-lg shadow-md transition-all flex justify-center items-center">
-                        <i class="fas fa-save mr-2"></i> 
-                        <span id="submitBtnText">Save Log</span> 
-                    </button>
+                    <button type="button" id="deleteBtn" onclick="window.deleteCurrentEntry()" class="hidden w-1/3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold py-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition">Delete</button>
+                    <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 active:scale-95 text-white font-bold py-3 rounded-lg shadow-md transition-all flex justify-center items-center"><span id="submitBtnText">Save Log</span></button>
                 </div>
                 <div class="h-4"></div>
             </form>
@@ -267,152 +205,107 @@
                 <h3 class="text-lg font-bold text-gray-800 dark:text-white">Settings</h3>
                 <button onclick="window.toggleSettings()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><i class="fas fa-times text-xl"></i></button>
             </div>
+            <!-- Install PWA Button (Hidden by default) -->
+            <div id="installAppContainer" class="hidden">
+                 <button onclick="window.installPWA()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 p-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 mb-4">
+                    <i class="fas fa-download"></i> Install App to Home Screen
+                </button>
+            </div>
             <!-- Dark Mode Toggle -->
             <div class="flex items-center justify-between">
                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Dark Mode</span>
-                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                    <input type="checkbox" id="darkModeToggle" onchange="window.toggleDarkMode()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/>
-                    <label for="darkModeToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                </div>
+                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" id="darkModeToggle" onchange="window.toggleDarkMode()" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300"/><label for="darkModeToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label></div>
             </div>
-
             <!-- Auth -->
-            <div class="bg-blue-50 dark:bg-gray-800 p-4 rounded-xl text-center border border-blue-100 dark:border-gray-700">
-                <p id="userStatus" class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-bold"></p>
-                <button id="logoutBtn" onclick="window.appService.logout()" class="w-full bg-white dark:bg-gray-700 text-red-500 font-bold py-2 px-4 rounded shadow border dark:border-gray-600 hover:bg-red-50 dark:hover:bg-gray-600">
-                    Sign Out
-                </button>
-            </div>
+            <div class="bg-blue-50 dark:bg-gray-800 p-4 rounded-xl text-center border border-blue-100 dark:border-gray-700"><p id="userStatus" class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-bold"></p><button id="logoutBtn" onclick="window.appService.logout()" class="w-full bg-white dark:bg-gray-700 text-red-500 font-bold py-2 px-4 rounded shadow border dark:border-gray-600 hover:bg-red-50 dark:hover:bg-gray-600">Sign Out</button></div>
             <!-- Vehicles -->
-            <div class="space-y-3">
-                <h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Vehicles</h4>
-                <div class="flex gap-2">
-                    <input type="text" id="newVehicleName" placeholder="Name" class="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white">
-                    <button onclick="window.addVehicle()" class="bg-green-600 text-white px-4 rounded-lg text-sm font-bold"><i class="fas fa-plus"></i></button>
-                </div>
-                <div id="vehicleList" class="space-y-2 max-h-32 overflow-y-auto"></div>
-            </div>
+            <div class="space-y-3"><h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Vehicles</h4><div class="flex gap-2"><input type="text" id="newVehicleName" placeholder="Name" class="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white"><button onclick="window.addVehicle()" class="bg-green-600 text-white px-4 rounded-lg text-sm font-bold"><i class="fas fa-plus"></i></button></div><div id="vehicleList" class="space-y-2 max-h-32 overflow-y-auto"></div></div>
             <!-- Data -->
-            <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Data Actions</h4>
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="window.exportData()" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 p-3 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300"><i class="fas fa-download mr-1"></i> JSON Backup</button>
-                    <label for="fileInput" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 p-3 rounded-lg text-sm font-bold text-center cursor-pointer text-gray-700 dark:text-gray-300">
-                        <i class="fas fa-upload mr-1"></i> JSON Restore
-                    </label>
-                </div>
-                <button onclick="window.exportCSV()" class="w-full bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 p-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2">
-                    <i class="fas fa-file-csv"></i> Export to Excel / CSV
-                </button>
-                <input type="file" id="fileInput" class="hidden" onchange="window.importData(this)" accept=".json">
-            </div>
+            <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800"><h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase">Data Actions</h4><div class="grid grid-cols-2 gap-3"><button onclick="window.exportData()" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 p-3 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-300"><i class="fas fa-download mr-1"></i> JSON Backup</button><label for="fileInput" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 p-3 rounded-lg text-sm font-bold text-center cursor-pointer text-gray-700 dark:text-gray-300"><i class="fas fa-upload mr-1"></i> JSON Restore</label></div><button onclick="window.exportCSV()" class="w-full bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 p-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2"><i class="fas fa-file-csv"></i> Export to Excel / CSV</button><input type="file" id="fileInput" class="hidden" onchange="window.importData(this)" accept=".json"></div>
+            <!-- Version Footer -->
+            <div class="text-center pt-2"><p class="text-[10px] text-gray-300 dark:text-gray-600">v2.1.2 • 2026</p></div>
         </div>
     </div>
 
-    <!-- Application Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
-        // --- CONFIGURATION ---
+        // CONFIG
         // ==========================================
-        
-        // 1. Set to FALSE for production deployment
-        const IS_DEV_MODE = false; 
-        
-        // 2. IMPORTANT: Consistent ID for data path
+        const hostname = window.location.hostname;
+        const IS_DEV_MODE = true;//hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-') || new URLSearchParams(window.location.search).get('mode') === 'dev';
         const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
 
         const DUMMY_DATA = {
             "vehicles": [{"id": "v_dummy", "name": "My Car (Dev Mode)"}],
             "logs": [
                 { "id": "l1", "vehicleId": "v_dummy", "type": "fuel", "date": "2025-06-15", "odometer": 79269, "gallons": 10.73, "price": 2.75, "notes": "Initial Fill", "isPartial": false },
-                { "id": "l2", "vehicleId": "v_dummy", "type": "fuel", "date": "2025-06-21", "odometer": 79608, "gallons": 11.769, "price": 2.88, "isPartial": false },
-                { "id": "l3", "vehicleId": "v_dummy", "type": "service", "date": "2025-07-01", "odometer": 79900, "serviceType": "Oil Change", "serviceCost": 45.00, "notes": "Synthetic Oil" }
+                { "id": "l2", "vehicleId": "v_dummy", "type": "fuel", "date": "2025-06-21", "odometer": 79608, "gallons": 11.769, "price": 2.88, "isPartial": false }
             ]
         };
 
-        let firebaseConfig = {
-            apiKey: "AIzaSyAc_OjXWuMB6zDuKXi5xGNI_a30o2J5aoY",
-            authDomain: "fuel-tracker-pro-2d87d.firebaseapp.com",
-            projectId: "fuel-tracker-pro-2d87d",
-            storageBucket: "fuel-tracker-pro-2d87d.firebasestorage.app",
-            messagingSenderId: "1083986513796",
-            appId: "1:1083986513796:web:c8cbd5e0047e49093c97d1",
-            measurementId: "G-DFPYH0YLM9"
+        // PWA: Register Service Worker
+        if ('serviceWorker' in navigator && !IS_DEV_MODE) {
+            navigator.serviceWorker.register('sw.js').then(() => console.log("SW Registered")).catch(e => console.log("SW Fail", e));
+        }
+        
+        // PWA Install Prompt Logic
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installAppContainer').classList.remove('hidden');
+        });
+        
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('installAppContainer').classList.add('hidden');
+                }
+                deferredPrompt = null;
+            }
         };
 
+        let firebaseConfig = {};
         if (!IS_DEV_MODE) {
-            if (typeof __firebase_config !== 'undefined') {
-                try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {}
-            }
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase Config Missing.</div>`;
-            }
+            if (typeof __firebase_config !== 'undefined') try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {}
+            if (!firebaseConfig || !firebaseConfig.apiKey) document.body.innerHTML += `<div style="padding:20px;text-align:center;color:red;font-weight:bold;">Firebase Config Missing.</div>`;
         }
 
         let currentUser = null;
         let appState = { vehicles: [], activeVehicle: localStorage.getItem('lastActiveVehicle') || null, logs: [] };
         let mainChartInstance = null;
         let activeChartType = 'mpg';
+        let currentTab = 'dashboard';
 
-        // --- Dark Mode Logic ---
-        window.toggleDarkMode = function() {
-            const html = document.documentElement;
-            const isDark = html.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            window.render();
-        }
-        
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            document.getElementById('darkModeToggle').checked = true;
-        }
+        // Theme Init
+        window.toggleDarkMode = function() { const isDark = document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); window.render(); };
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) { document.documentElement.classList.add('dark'); document.getElementById('darkModeToggle').checked = true; }
 
-        // --- Services ---
+        // --- SERVICES ---
         const MockService = {
             init: () => {
                 const stored = localStorage.getItem('dev_mode_data');
                 if (!stored) localStorage.setItem('dev_mode_data', JSON.stringify(DUMMY_DATA));
-                document.getElementById('appModeLabel').innerText = "Developer Mode (Local Data)";
+                document.getElementById('appModeLabel').innerText = "Developer Mode (Local)";
                 document.getElementById('appModeLabel').classList.replace('text-blue-200', 'text-yellow-300');
                 document.getElementById('loginBtnText').innerText = "Enter Dev Mode";
             },
             login: async () => onUserLoggedIn({ uid: "dev_user", displayName: "Developer", email: "dev@local.host" }),
             logout: async () => onUserLoggedOut(),
-            saveLog: async (log) => {
-                const data = JSON.parse(localStorage.getItem('dev_mode_data'));
-                const idx = data.logs.findIndex(l => l.id === log.id);
-                if (idx >= 0) data.logs[idx] = log; else data.logs.push(log);
-                localStorage.setItem('dev_mode_data', JSON.stringify(data));
-                MockService.triggerListeners();
-            },
-            deleteLog: async (id) => {
-                const data = JSON.parse(localStorage.getItem('dev_mode_data'));
-                data.logs = data.logs.filter(l => l.id !== id);
-                localStorage.setItem('dev_mode_data', JSON.stringify(data));
-                MockService.triggerListeners();
-            },
-            saveVehicle: async (v) => {
-                const data = JSON.parse(localStorage.getItem('dev_mode_data'));
-                if(!data.vehicles.find(vh => vh.id === v.id)) data.vehicles.push(v);
-                localStorage.setItem('dev_mode_data', JSON.stringify(data));
-                MockService.triggerListeners();
-            },
-            deleteVehicle: async (id) => {
-                const data = JSON.parse(localStorage.getItem('dev_mode_data'));
-                data.vehicles = data.vehicles.filter(v => v.id !== id);
-                localStorage.setItem('dev_mode_data', JSON.stringify(data));
-                MockService.triggerListeners();
-            },
-            triggerListeners: () => {
-                const data = JSON.parse(localStorage.getItem('dev_mode_data'));
-                updateAppData(data.vehicles, data.logs);
-            }
+            saveLog: async (log) => { updateLocal('logs', log); },
+            deleteLog: async (id) => { deleteLocal('logs', id); },
+            saveVehicle: async (v) => { updateLocal('vehicles', v); },
+            deleteVehicle: async (id) => { deleteLocal('vehicles', id); },
+            triggerListeners: () => { const d = JSON.parse(localStorage.getItem('dev_mode_data')); appState = { ...d, activeVehicle: appState.activeVehicle }; checkDefaultVehicle(); window.render(); }
         };
+        function updateLocal(key, item) { const d = JSON.parse(localStorage.getItem('dev_mode_data')); if(!d[key]) d[key]=[]; const idx = d[key].findIndex(x => x.id === item.id); if (idx >= 0) d[key][idx] = item; else d[key].push(item); localStorage.setItem('dev_mode_data', JSON.stringify(d)); MockService.triggerListeners(); }
+        function deleteLocal(key, id) { const d = JSON.parse(localStorage.getItem('dev_mode_data')); if(!d[key]) return; d[key] = d[key].filter(x => x.id !== id); localStorage.setItem('dev_mode_data', JSON.stringify(d)); MockService.triggerListeners(); }
 
         const FirebaseService = {
             app: null, auth: null, db: null, provider: null,
@@ -421,37 +314,22 @@
                 FirebaseService.auth = getAuth(FirebaseService.app);
                 FirebaseService.db = getFirestore(FirebaseService.app);
                 FirebaseService.provider = new GoogleAuthProvider();
+                enableIndexedDbPersistence(FirebaseService.db).catch((err) => {
+                    if (err.code == 'failed-precondition') console.warn("Persistence failed: Multiple tabs open");
+                    else if (err.code == 'unimplemented') console.warn("Persistence not supported by browser");
+                });
                 onAuthStateChanged(FirebaseService.auth, (user) => user ? onUserLoggedIn(user) : onUserLoggedOut());
             },
             login: async () => { try { await signInWithPopup(FirebaseService.auth, FirebaseService.provider); } catch (e) { alert("Login Failed: " + e.message); } },
             logout: async () => { if (confirm("Sign out?")) await signOut(FirebaseService.auth); },
-            saveLog: async (log) => {
-                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
-                await setDoc(doc(FirebaseService.db, USER_ROOT, 'logs', log.id), log);
-            },
-            deleteLog: async (id) => {
-                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
-                await deleteDoc(doc(FirebaseService.db, USER_ROOT, 'logs', id));
-            },
-            saveVehicle: async (v) => {
-                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
-                await setDoc(doc(FirebaseService.db, USER_ROOT, 'vehicles', v.id), v);
-            },
-            deleteVehicle: async (id) => {
-                const USER_ROOT = `artifacts/${APP_ID}/users/${currentUser.uid}`;
-                await deleteDoc(doc(FirebaseService.db, USER_ROOT, 'vehicles', id));
-            },
+            saveLog: async (log) => { await setDoc(doc(FirebaseService.db, `artifacts/${APP_ID}/users/${currentUser.uid}/logs`, log.id), log); },
+            deleteLog: async (id) => { await deleteDoc(doc(FirebaseService.db, `artifacts/${APP_ID}/users/${currentUser.uid}/logs`, id)); },
+            saveVehicle: async (v) => { await setDoc(doc(FirebaseService.db, `artifacts/${APP_ID}/users/${currentUser.uid}/vehicles`, v.id), v); },
+            deleteVehicle: async (id) => { await deleteDoc(doc(FirebaseService.db, `artifacts/${APP_ID}/users/${currentUser.uid}/vehicles`, id)); },
             setupListeners: (user) => {
                 const USER_ROOT = `artifacts/${APP_ID}/users/${user.uid}`;
-                onSnapshot(collection(FirebaseService.db, USER_ROOT, 'vehicles'), (snap) => {
-                    const vehicles = []; snap.forEach(d => vehicles.push(d.data()));
-                    appState.vehicles = vehicles; checkDefaultVehicle(); window.render();
-                });
-                onSnapshot(collection(FirebaseService.db, USER_ROOT, 'logs'), (snap) => {
-                    const logs = []; snap.forEach(d => logs.push(d.data()));
-                    appState.logs = logs; window.render();
-                    const el = document.getElementById('syncStatus'); el.classList.remove('opacity-0'); setTimeout(() => el.classList.add('opacity-0'), 2000);
-                });
+                onSnapshot(collection(FirebaseService.db, USER_ROOT, 'vehicles'), (snap) => { appState.vehicles = []; snap.forEach(d => appState.vehicles.push(d.data())); checkDefaultVehicle(); window.render(); });
+                onSnapshot(collection(FirebaseService.db, USER_ROOT, 'logs'), (snap) => { appState.logs = []; snap.forEach(d => appState.logs.push(d.data())); window.render(); document.getElementById('syncStatus').classList.remove('opacity-0'); setTimeout(()=>document.getElementById('syncStatus').classList.add('opacity-0'),2000); });
             }
         };
 
@@ -459,312 +337,114 @@
         window.appService = Service;
         Service.init();
 
-        function onUserLoggedIn(user) {
-            currentUser = user;
-            document.getElementById('loginOverlay').classList.add('opacity-0', 'pointer-events-none');
-            document.getElementById('userStatus').innerText = `Logged in as ${user.displayName || user.email || 'Developer'}`;
-            IS_DEV_MODE ? MockService.triggerListeners() : FirebaseService.setupListeners(user);
-        }
+        function onUserLoggedIn(user) { currentUser = user; document.getElementById('loginOverlay').classList.add('opacity-0', 'pointer-events-none'); document.getElementById('userStatus').innerText = `Logged in as ${user.displayName || user.email}`; IS_DEV_MODE ? MockService.triggerListeners() : FirebaseService.setupListeners(user); }
+        function onUserLoggedOut() { currentUser = null; document.getElementById('loginOverlay').classList.remove('opacity-0', 'pointer-events-none'); document.getElementById('settingsModal').classList.add('hidden'); appState.logs=[]; appState.vehicles=[]; }
+        function checkDefaultVehicle() { if (appState.vehicles.length === 0) window.addVehicle('My Car'); else if (!appState.vehicles.find(v => v.id === appState.activeVehicle)) { appState.activeVehicle = appState.vehicles[0].id; localStorage.setItem('lastActiveVehicle', appState.activeVehicle); } }
 
-        function onUserLoggedOut() {
-            currentUser = null;
-            document.getElementById('loginOverlay').classList.remove('opacity-0', 'pointer-events-none');
-            document.getElementById('settingsModal').classList.add('hidden');
-            appState.logs = []; appState.vehicles = [];
-        }
-
-        function updateAppData(vehicles, logs) {
-            appState.vehicles = vehicles; appState.logs = logs; checkDefaultVehicle(); window.render();
-        }
-
-        function checkDefaultVehicle() {
-            if (appState.vehicles.length === 0) window.addVehicle('My Car');
-            else if (!appState.vehicles.find(v => v.id === appState.activeVehicle)) {
-                appState.activeVehicle = appState.vehicles[0].id;
-                localStorage.setItem('lastActiveVehicle', appState.activeVehicle);
+        // --- UI ---
+        window.switchTab = function(t) {
+            currentTab = t; 
+            if(t==='analytics') {
+                document.getElementById('mainChart').scrollIntoView({behavior: 'smooth'});
             }
-        }
-
-        // --- Sheet & FAB Logic ---
-        window.openAddLog = function(isEdit = false) {
-            if(!isEdit) window.resetForm();
-            const wrapper = document.getElementById('entrySheetWrapper');
-            const sheet = document.getElementById('entrySheet');
-            document.body.classList.add('scroll-locked');
-            wrapper.classList.remove('invisible');
-            setTimeout(() => { sheet.classList.remove('translate-y-full'); }, 10);
         };
 
-        window.closeAddLog = function() {
-            const wrapper = document.getElementById('entrySheetWrapper');
-            const sheet = document.getElementById('entrySheet');
-            document.body.classList.remove('scroll-locked');
-            sheet.classList.add('translate-y-full');
-            setTimeout(() => { wrapper.classList.add('invisible'); }, 300);
-        };
+        window.openAddLog = (isEdit) => { if(!isEdit) window.resetForm(); document.getElementById('entrySheetWrapper').classList.remove('invisible'); document.body.classList.add('scroll-locked'); setTimeout(()=>document.getElementById('entrySheet').classList.remove('translate-y-full'),10); };
+        window.closeAddLog = () => { document.getElementById('entrySheet').classList.add('translate-y-full'); document.body.classList.remove('scroll-locked'); setTimeout(()=>document.getElementById('entrySheetWrapper').classList.add('invisible'),300); };
 
-        window.setLogType = function(type) {
+        window.setLogType = (type) => {
             document.getElementById('logType').value = type;
-            const btnFuel = document.getElementById('typeBtnFuel');
-            const btnService = document.getElementById('typeBtnService');
-            const fuelFields = document.getElementById('fuelFields');
-            const serviceFields = document.getElementById('serviceFields');
-            const partialContainer = document.getElementById('partialContainer');
-            
-            const fuelInputs = fuelFields.querySelectorAll('input');
-            const serviceInputs = serviceFields.querySelectorAll('input, select');
-
-            if (type === 'fuel') {
-                btnFuel.className = "flex-1 py-2 text-sm font-bold rounded-md shadow-sm bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 transition-all";
-                btnService.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-500 dark:text-gray-400 transition-all";
-                
-                fuelFields.classList.remove('hidden');
-                fuelFields.classList.add('grid');
-                partialContainer.classList.remove('hidden');
-                partialContainer.classList.add('flex');
-                serviceFields.classList.add('hidden');
-                serviceFields.classList.remove('grid');
-
-                fuelInputs.forEach(i => i.required = true);
-                serviceInputs.forEach(i => i.required = false);
+            const bf=document.getElementById('typeBtnFuel'), bs=document.getElementById('typeBtnService'), ff=document.getElementById('fuelFields'), sf=document.getElementById('serviceFields'), pc=document.getElementById('partialContainer');
+            if(type==='fuel'){
+                bf.className="flex-1 py-2 text-sm font-bold rounded-md shadow-sm bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 transition-all";
+                bs.className="flex-1 py-2 text-sm font-bold rounded-md text-gray-500 dark:text-gray-400 transition-all";
+                ff.classList.remove('hidden'); ff.classList.add('grid'); pc.classList.remove('hidden'); pc.classList.add('flex'); sf.classList.add('hidden'); sf.classList.remove('grid');
+                ff.querySelectorAll('input').forEach(i=>i.required=true); sf.querySelectorAll('input').forEach(i=>i.required=false);
             } else {
-                btnService.className = "flex-1 py-2 text-sm font-bold rounded-md shadow-sm bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 transition-all";
-                btnFuel.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-500 dark:text-gray-400 transition-all";
-                
-                fuelFields.classList.add('hidden');
-                fuelFields.classList.remove('grid');
-                partialContainer.classList.add('hidden');
-                partialContainer.classList.remove('flex');
-                serviceFields.classList.remove('hidden');
-                serviceFields.classList.add('grid');
-
-                fuelInputs.forEach(i => i.required = false);
-                serviceInputs.forEach(i => i.required = true);
+                bs.className="flex-1 py-2 text-sm font-bold rounded-md shadow-sm bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 transition-all";
+                bf.className="flex-1 py-2 text-sm font-bold rounded-md text-gray-500 dark:text-gray-400 transition-all";
+                sf.classList.remove('hidden'); sf.classList.add('grid'); ff.classList.add('hidden'); ff.classList.remove('grid'); pc.classList.add('hidden'); pc.classList.remove('flex');
+                sf.querySelectorAll('input').forEach(i=>i.required=true); ff.querySelectorAll('input').forEach(i=>i.required=false);
             }
         };
 
-        // --- Render Modern List ---
+        window.handleFormSubmit = async(e)=>{ e.preventDefault(); const id=document.getElementById('entryId').value, type=document.getElementById('logType').value; let d={id:id||Date.now().toString(36), vehicleId:appState.activeVehicle, type:type, date:document.getElementById('date').value, odometer:parseFloat(document.getElementById('odometer').value), notes:document.getElementById('notes').value}; if(type==='fuel'){ d.gallons=parseFloat(document.getElementById('gallons').value); d.price=parseFloat(document.getElementById('price').value)||0; d.isPartial=document.getElementById('isPartial').checked; } else { d.serviceType=document.getElementById('serviceType').value; d.serviceCost=parseFloat(document.getElementById('serviceCost').value)||0; } await Service.saveLog(d); window.closeAddLog(); };
+        
+        window.editEntry = (id) => { const l=appState.logs.find(x=>x.id===id); if(!l)return; window.setLogType(l.type==='service'?'service':'fuel'); document.getElementById('entryId').value=l.id; document.getElementById('date').value=l.date; document.getElementById('odometer').value=l.odometer; document.getElementById('notes').value=l.notes||''; if(l.type==='service'){ document.getElementById('serviceType').value=l.serviceType; document.getElementById('serviceCost').value=l.serviceCost; }else{ document.getElementById('gallons').value=l.gallons; document.getElementById('price').value=l.price; document.getElementById('isPartial').checked=!!l.isPartial; } document.getElementById('formTitle').innerText="Edit Entry"; document.getElementById('submitBtnText').innerText="Update Log"; document.getElementById('deleteBtn').classList.remove('hidden'); window.openAddLog(true); };
+        window.resetForm = () => { document.getElementById('entryForm').reset(); document.getElementById('entryId').value=''; document.getElementById('date').valueAsDate=new Date(); document.getElementById('isPartial').checked=false; window.setLogType('fuel'); document.getElementById('formTitle').innerText="New Entry"; document.getElementById('submitBtnText').innerText="Save Log"; document.getElementById('deleteBtn').classList.add('hidden'); };
+        window.deleteCurrentEntry = async() => { if(confirm("Delete?")) { await Service.deleteLog(document.getElementById('entryId').value); window.closeAddLog(); } };
+        window.addVehicle = async() => { const n=document.getElementById('newVehicleName').value; if(n){ await Service.saveVehicle({id:'v_'+Date.now(), name:n}); window.switchVehicle('v_'+Date.now()); }};
+        window.deleteVehicle = async(id) => { if(confirm("Delete?")){ await Service.deleteVehicle(id); if(appState.activeVehicle===id) window.switchVehicle(appState.vehicles[0]?.id); }};
+        window.switchVehicle = (id) => { appState.activeVehicle=id; localStorage.setItem('lastActiveVehicle', id); window.render(); };
+        window.toggleSettings = () => document.getElementById('settingsModal').classList.toggle('hidden');
+        window.exportData = () => { const a=document.createElement('a'); a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(appState)); a.download="backup.json"; a.click(); };
+        window.importData = (i) => { const r=new FileReader(); r.onload=async(e)=>{ const j=JSON.parse(e.target.result); if(confirm("Import?")){ const b=writeBatch(FirebaseService.db); const R=`artifacts/${APP_ID}/users/${currentUser.uid}`; j.vehicles.forEach(v=>b.set(doc(FirebaseService.db,R,'vehicles',v.id),v)); j.logs.forEach(l=>b.set(doc(FirebaseService.db,R,'logs',l.id||Date.now().toString()),l)); await b.commit(); window.toggleSettings(); }}; r.readAsText(i.files[0]); };
+        window.exportCSV = function() { const logs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle); let csv = "Type,Date,Odo,Gal,Price,Cost,Notes\n" + logs.map(l => { if(l.type === 'service') return `Service,${l.date},${l.odometer},-,${l.serviceType},${l.serviceCost},"${(l.notes||'').replace(/"/g,'""')}"`; else return `Fuel,${l.date},${l.odometer},${l.gallons},${l.price},${(l.gallons*l.price).toFixed(2)},"${(l.notes||'').replace(/"/g,'""')}"`; }).join("\n"); const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "export.csv"; a.click(); };
+        
+        // --- Render Logic ---
         function getCalculatedHistory(vehicleLogs) {
-            const fuelLogs = vehicleLogs.filter(l => !l.type || l.type === 'fuel');
+            const fuelLogs = vehicleLogs.filter(l => !l.type || l.type === 'fuel').sort((a,b) => a.odometer - b.odometer);
             const serviceLogs = vehicleLogs.filter(l => l.type === 'service');
-            
-            fuelLogs.sort((a,b) => a.odometer - b.odometer);
-            let history = [];
-            let pendingGallons = 0, pendingCost = 0, lastFullLog = fuelLogs[0]; 
-            
+            let history = [], pendingGallons = 0, lastFullLog = fuelLogs[0];
             if(fuelLogs.length > 0) {
                 history.push({ ...fuelLogs[0], miles: 0, mpg: 0, cost: fuelLogs[0].gallons * fuelLogs[0].price, isStart: true, type: 'fuel' });
                 for (let i = 1; i < fuelLogs.length; i++) {
                     const current = fuelLogs[i];
                     pendingGallons += current.gallons;
-                    pendingCost += (current.gallons * current.price);
-                    if (current.isPartial) {
-                        history.push({ ...current, miles: current.odometer - fuelLogs[i-1].odometer, mpg: 0, cost: current.gallons * current.price, isPartialLog: true, type: 'fuel' });
-                    } else {
+                    if (current.isPartial) history.push({ ...current, miles: current.odometer - fuelLogs[i-1].odometer, mpg: 0, cost: current.gallons * current.price, isPartialLog: true, type: 'fuel' });
+                    else {
                         const totalMiles = current.odometer - lastFullLog.odometer;
-                        const totalGallons = pendingGallons;
-                        history.push({ ...current, miles: totalMiles, mpg: totalGallons>0?totalMiles/totalGallons:0, cost: current.gallons * current.price, isFullFill: true, type: 'fuel' });
-                        pendingGallons = 0; pendingCost = 0; lastFullLog = current;
+                        history.push({ ...current, miles: totalMiles, mpg: pendingGallons>0?totalMiles/pendingGallons:0, cost: current.gallons * current.price, isFullFill: true, type: 'fuel' });
+                        pendingGallons = 0; lastFullLog = current;
                     }
                 }
             }
-
-            const serviceHistory = serviceLogs.map(l => ({ ...l, mpg: 0, cost: l.serviceCost || 0, type: 'service' }));
-            const combined = [...history, ...serviceHistory];
+            const combined = [...history, ...serviceLogs.map(l => ({ ...l, mpg: 0, cost: l.serviceCost || 0, type: 'service' }))];
             combined.sort((a,b) => new Date(b.date) - new Date(a.date));
             return combined;
         }
 
-        window.render = function() {
+        window.render = () => {
             const select = document.getElementById('vehicleSelect');
             select.innerHTML = appState.vehicles.map(v => `<option value="${v.id}" ${v.id === appState.activeVehicle ? 'selected' : ''}>${v.name}</option>`).join('');
-
-            const currentLogs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle);
-            const history = getCalculatedHistory(currentLogs);
-
-            const fuelLogs = currentLogs.filter(l => !l.type || l.type === 'fuel').sort((a,b) => a.odometer - b.odometer);
+            const logs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle);
+            // Calculate stats
+            const fuelLogs = logs.filter(l => l.type !== 'service').sort((a,b) => a.odometer - b.odometer);
+            let totalMiles=0, totalFuelGal=0, totalFuelCost=0;
+            if(fuelLogs.length > 1) { totalMiles = fuelLogs[fuelLogs.length-1].odometer - fuelLogs[0].odometer; for(let i=1;i<fuelLogs.length;i++){ totalFuelGal+=fuelLogs[i].gallons; totalFuelCost+=(fuelLogs[i].gallons*fuelLogs[i].price); } }
+            let totalService = logs.filter(l=>l.type==='service').reduce((s,l)=>s+(l.serviceCost||0),0);
+            let totalSpent = logs.filter(l=>l.type!=='service').reduce((s,l)=>s+(l.gallons*l.price),0) + totalService;
             
-            let totalMiles = 0, totalFuelGallons = 0, totalFuelCost = 0;
-            if (fuelLogs.length > 1) {
-                totalMiles = fuelLogs[fuelLogs.length - 1].odometer - fuelLogs[0].odometer;
-                for(let i=1; i<fuelLogs.length; i++) { 
-                    totalFuelGallons += fuelLogs[i].gallons; 
-                    totalFuelCost += (fuelLogs[i].gallons * fuelLogs[i].price); 
-                }
-            }
-            
-            let totalServiceCost = currentLogs.filter(l=>l.type==='service').reduce((sum, l) => sum + (parseFloat(l.serviceCost)||0), 0);
-            let absTotalSpent = currentLogs.filter(l=>!l.type||l.type==='fuel').reduce((sum, l) => sum + (l.gallons * l.price), 0) + totalServiceCost;
-
-            const overall = totalFuelGallons > 0 ? (totalMiles / totalFuelGallons).toFixed(1) : '--';
-            const lastEntry = history.find(h => h.type === 'fuel' && h.mpg > 0);
-            const last = lastEntry ? lastEntry.mpg.toFixed(1) : '--';
-            const cpm = totalMiles > 0 ? '$' + (totalFuelCost / totalMiles).toFixed(2) : '--';
-
-            document.getElementById('overallMpg').innerText = overall;
-            document.getElementById('lastMpg').innerText = last;
-            document.getElementById('costPerMile').innerText = cpm;
-            document.getElementById('totalSpent').innerText = '$' + Math.round(absTotalSpent).toLocaleString();
+            document.getElementById('overallMpg').innerText = totalFuelGal > 0 ? (totalMiles / totalFuelGal).toFixed(1) : '--';
+            document.getElementById('totalSpent').innerText = '$' + Math.round(totalSpent).toLocaleString();
             document.getElementById('totalMilesDisplay').innerText = totalMiles > 0 ? `${totalMiles.toLocaleString()} mi` : '--';
+            // Also need last mpg and cpm
+            const history = getCalculatedHistory(logs);
+            const lastEntry = history.find(h => h.type === 'fuel' && h.mpg > 0);
+            document.getElementById('lastMpg').innerText = lastEntry ? lastEntry.mpg.toFixed(1) : '--';
+            document.getElementById('costPerMile').innerText = totalMiles > 0 ? '$' + (totalFuelCost / totalMiles).toFixed(2) : '--';
 
             renderMainChart(history);
+            renderList(logs);
+        };
 
+        function renderList(logs) {
+            const sorted = getCalculatedHistory(logs); // Reuse logic for consistent display
             const listEl = document.getElementById('historyList');
-            const emptyEl = document.getElementById('emptyState');
-            if (history.length === 0) { listEl.innerHTML = ''; emptyEl.classList.remove('hidden'); } 
-            else {
-                emptyEl.classList.add('hidden');
-                listEl.innerHTML = history.map(item => {
-                    const dateObj = new Date(item.date + 'T12:00:00');
-                    const day = dateObj.getDate();
-                    const month = dateObj.toLocaleString('en-US', { month: 'short' });
-                    
-                    if (item.type === 'service') {
-                        return `
-                        <div onclick="window.editEntry('${item.id}')" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-l-4 border-purple-500 dark:border-purple-600 active:scale-[0.98] transition-transform cursor-pointer flex justify-between items-center group">
-                            <div class="flex items-center gap-4">
-                                <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2 text-center min-w-[50px]">
-                                    <div class="text-xs text-purple-400 font-bold uppercase">${month}</div>
-                                    <div class="text-xl font-black text-purple-700 dark:text-purple-400 leading-none">${day}</div>
-                                </div>
-                                <div>
-                                    <div class="text-sm font-bold text-gray-800 dark:text-white mb-1">${item.serviceType || 'Service'}</div>
-                                    <div class="text-[10px] text-gray-400 font-mono">ODO: ${item.odometer.toLocaleString()}</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <span class="block text-sm font-black text-gray-700 dark:text-gray-200">$${item.cost.toFixed(2)}</span>
-                                <span class="text-[9px] text-purple-400 uppercase font-bold"><i class="fas fa-wrench"></i> Service</span>
-                            </div>
-                        </div>`;
-                    } else {
-                        let mpgBadge = '';
-                        if(item.isStart) mpgBadge = `<span class="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-bold px-2 py-1 rounded">START</span>`;
-                        else if(item.isPartialLog) mpgBadge = `<span class="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-bold px-2 py-1 rounded">PARTIAL</span>`;
-                        else mpgBadge = `<span class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-black px-2 py-1 rounded">${item.mpg.toFixed(1)} <span class="text-[9px] font-normal opacity-75">MPG</span></span>`;
-
-                        return `
-                        <div onclick="window.editEntry('${item.id}')" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-50 dark:border-gray-700 active:scale-[0.98] transition-transform cursor-pointer flex justify-between items-center group">
-                            <div class="flex items-center gap-4">
-                                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 text-center min-w-[50px]">
-                                    <div class="text-xs text-gray-400 dark:text-gray-400 font-bold uppercase">${month}</div>
-                                    <div class="text-xl font-black text-gray-700 dark:text-gray-200 leading-none">${day}</div>
-                                </div>
-                                <div>
-                                    <div class="flex items-center gap-3 text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
-                                        <span class="flex items-center gap-1"><i class="fas fa-road text-gray-300 dark:text-gray-500 text-xs"></i> ${item.isStart ? '0' : item.miles}</span>
-                                        <span class="flex items-center gap-1"><i class="fas fa-gas-pump text-gray-300 dark:text-gray-500 text-xs"></i> ${item.gallons}</span>
-                                        <span class="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold"><i class="fas fa-dollar-sign text-[10px]"></i> ${item.cost.toFixed(2)}</span>
-                                    </div>
-                                    <div class="text-[10px] text-gray-400 font-mono">ODO: ${item.odometer.toLocaleString()}</div>
-                                </div>
-                            </div>
-                            <div>${mpgBadge}</div>
-                        </div>`;
-                    }
-                }).join('');
-            }
-            
-            document.getElementById('vehicleList').innerHTML = appState.vehicles.map(v => `
-                <div class="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded mb-1 items-center">
-                    <span class="text-sm dark:text-white ${v.id===appState.activeVehicle?'font-bold text-blue-600 dark:text-blue-400':''}">${v.name}</span>
-                    ${appState.vehicles.length > 1 ? `<button onclick="window.deleteVehicle('${v.id}')" class="text-red-400 p-2"><i class="fas fa-trash text-xs"></i></button>` : ''}
-                </div>`).join('');
-        };
-
-        window.editEntry = function(id) {
-            const log = appState.logs.find(l => String(l.id) === String(id));
-            if (!log) return;
-            const isService = log.type === 'service';
-            window.setLogType(isService ? 'service' : 'fuel');
-            document.getElementById('entryId').value = log.id;
-            document.getElementById('date').value = log.date;
-            document.getElementById('odometer').value = log.odometer;
-            document.getElementById('notes').value = log.notes || '';
-            if(isService) {
-                document.getElementById('serviceType').value = log.serviceType;
-                document.getElementById('serviceCost').value = log.serviceCost;
-            } else {
-                document.getElementById('gallons').value = log.gallons;
-                document.getElementById('price').value = log.price;
-                document.getElementById('isPartial').checked = !!log.isPartial;
-            }
-            document.getElementById('formTitle').innerText = "Edit Entry";
-            document.getElementById('submitBtnText').innerText = "Update Log";
-            document.getElementById('deleteBtn').classList.remove('hidden'); 
-            window.openAddLog(true);
-        };
-
-        window.resetForm = function() {
-            document.getElementById('entryForm').reset();
-            document.getElementById('entryId').value = '';
-            document.getElementById('date').valueAsDate = new Date();
-            document.getElementById('isPartial').checked = false;
-            window.setLogType('fuel');
-            document.getElementById('formTitle').innerText = "New Entry";
-            document.getElementById('submitBtnText').innerText = "Save Log"; 
-            document.getElementById('deleteBtn').classList.add('hidden');
-        };
-        
-        window.deleteCurrentEntry = async function() {
-            const id = document.getElementById('entryId').value;
-            if(id && confirm("Delete this entry?")) {
-                await Service.deleteLog(id);
-                window.closeAddLog();
-            }
-        };
-
-        window.handleFormSubmit = async function(e) {
-            e.preventDefault(); if (!currentUser) return;
-            const submitBtn = document.getElementById('submitBtn');
-            const originalHTML = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<div class="loader border-white border-t-blue-600"></div>';
-
-            try {
-                const id = document.getElementById('entryId').value;
-                const type = document.getElementById('logType').value;
-                let logData = {
-                    id: id || Date.now().toString(36),
-                    vehicleId: appState.activeVehicle,
-                    type: type,
-                    date: document.getElementById('date').value,
-                    odometer: parseFloat(document.getElementById('odometer').value),
-                    notes: document.getElementById('notes').value,
-                };
-                if (type === 'fuel') {
-                    logData.gallons = parseFloat(document.getElementById('gallons').value);
-                    logData.price = parseFloat(document.getElementById('price').value) || 0;
-                    logData.isPartial = document.getElementById('isPartial').checked;
-                    if (logData.gallons <= 0) throw new Error("Gallons must be greater than 0");
+            if(sorted.length===0) { listEl.innerHTML=''; document.getElementById('emptyState').classList.remove('hidden'); return; }
+            document.getElementById('emptyState').classList.add('hidden');
+            listEl.innerHTML = sorted.map(item => {
+                const date = new Date(item.date + 'T12:00:00');
+                const d = date.getDate(), m = date.toLocaleString('en-US',{month:'short'});
+                if(item.type==='service') {
+                    return `<div onclick="window.editEntry('${item.id}')" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border-l-4 border-purple-500 dark:border-purple-600 active:scale-[0.98] transition-transform cursor-pointer flex justify-between items-center"><div class="flex items-center gap-4"><div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2 text-center min-w-[50px]"><div class="text-xs text-purple-400 font-bold uppercase">${m}</div><div class="text-xl font-black text-purple-700 dark:text-purple-400 leading-none">${d}</div></div><div><div class="text-sm font-bold text-gray-800 dark:text-white mb-1">${item.serviceType}</div><div class="text-[10px] text-gray-400 font-mono">ODO: ${item.odometer.toLocaleString()}</div></div></div><div class="text-right"><span class="block text-sm font-black text-gray-700 dark:text-gray-200">$${(item.serviceCost||0).toFixed(2)}</span><span class="text-[9px] text-purple-400 uppercase font-bold"><i class="fas fa-wrench"></i> Service</span></div></div>`;
                 } else {
-                    logData.serviceType = document.getElementById('serviceType').value;
-                    logData.serviceCost = parseFloat(document.getElementById('serviceCost').value) || 0;
+                    let mpgBadge = item.isStart ? `<span class="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-bold px-2 py-1 rounded">START</span>` : item.isPartialLog ? `<span class="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-bold px-2 py-1 rounded">PARTIAL</span>` : `<span class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-black px-2 py-1 rounded">${item.mpg.toFixed(1)} <span class="text-[9px] font-normal opacity-75">MPG</span></span>`;
+                    return `<div onclick="window.editEntry('${item.id}')" class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-50 dark:border-gray-700 active:scale-[0.98] transition-transform cursor-pointer flex justify-between items-center"><div class="flex items-center gap-4"><div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 text-center min-w-[50px]"><div class="text-xs text-gray-400 font-bold uppercase">${m}</div><div class="text-xl font-black text-gray-700 dark:text-gray-200 leading-none">${d}</div></div><div><div class="flex items-center gap-3 text-sm font-medium text-gray-600 dark:text-gray-300 mb-1"><span class="flex items-center gap-1"><i class="fas fa-road text-gray-300 dark:text-gray-500 text-xs"></i> ${item.isStart ? '0' : item.miles}</span><span class="flex items-center gap-1"><i class="fas fa-gas-pump text-gray-300 dark:text-gray-500 text-xs"></i> ${item.gallons}</span><span class="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold"><i class="fas fa-dollar-sign text-[10px]"></i> ${item.cost.toFixed(2)}</span></div><div class="text-[10px] text-gray-400 font-mono">ODO: ${item.odometer.toLocaleString()}</div></div></div><div>${mpgBadge}</div></div>`;
                 }
-                await Service.saveLog(logData);
-                window.closeAddLog();
-            } catch (err) { alert(err.message); } 
-            finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalHTML;
-            }
-        };
-        
-        window.addVehicle = async function() { const n = document.getElementById('newVehicleName').value; if(n) { await Service.saveVehicle({id:'v_'+Date.now(), name:n}); window.switchVehicle('v_'+Date.now()); }};
-        window.deleteVehicle = async function(id) { if(confirm("Delete?")) { await Service.deleteVehicle(id); if(appState.activeVehicle===id) window.switchVehicle(appState.vehicles[0]?.id); }};
-        window.switchVehicle = function(id) { appState.activeVehicle = id; localStorage.setItem('lastActiveVehicle', id); window.render(); };
-        window.toggleSettings = function() { document.getElementById('settingsModal').classList.toggle('hidden'); };
-        window.exportData = function() { const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState)); const a = document.createElement('a'); a.href = d; a.download = "backup.json"; a.click(); };
-        window.exportCSV = function() {
-             const logs = appState.logs.filter(l => l.vehicleId === appState.activeVehicle);
-             let csv = "Type,Date,Odo,Gal/Cost,Price/Type,Total,Notes\n" + logs.map(l => {
-                 if(l.type === 'service') return `Service,${l.date},${l.odometer},-,${l.serviceType},${l.serviceCost},"${(l.notes||'').replace(/"/g,'""')}"`;
-                 else return `Fuel,${l.date},${l.odometer},${l.gallons},${l.price},${(l.gallons*l.price).toFixed(2)},"${(l.notes||'').replace(/"/g,'""')}"`;
-             }).join("\n");
-             const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "export.csv"; a.click();
-        };
-        window.importData = function(i) { const f = i.files[0]; const r = new FileReader(); r.onload = async(e) => { const j = JSON.parse(e.target.result); if(confirm("Import?")) { if(IS_DEV_MODE) { localStorage.setItem('dev_mode_data', JSON.stringify(j)); MockService.triggerListeners(); } else { const b = writeBatch(FirebaseService.db); const R = `artifacts/${APP_ID}/users/${currentUser.uid}`; j.vehicles.forEach(v=>b.set(doc(FirebaseService.db,R,'vehicles',v.id),v)); j.logs.forEach(l=>b.set(doc(FirebaseService.db,R,'logs',l.id||Date.now().toString()),l)); await b.commit(); } window.toggleSettings(); }}; r.readAsText(f); };
-        
+            }).join('');
+        }
+
         function renderMainChart(h) {
             const ctx = document.getElementById('mainChart').getContext('2d');
             if(mainChartInstance) mainChartInstance.destroy();
@@ -780,46 +460,13 @@
 
             mainChartInstance = new Chart(ctx, { 
                 type: 'line', 
-                data: { 
-                    labels: valid.map(x => x.date), 
-                    datasets: [{ 
-                        label: activeChartType.toUpperCase(), 
-                        data: d, 
-                        borderColor: activeChartType==='mpg'?'#2563EB':'#059669', 
-                        backgroundColor: activeChartType==='mpg'?'rgba(37,99,235,0.1)':'rgba(5,150,105,0.1)',
-                        fill: true,
-                        tension: 0.3 
-                    }] 
-                }, 
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { maxTicksLimit: 6, color: textColor }, grid: { display: false } },
-                        y: { beginAtZero: false, ticks: { color: textColor }, grid: { color: gridColor } }
-                    },
-                    plugins: { legend: { display: false } }
-                } 
+                data: { labels: valid.map(x => x.date), datasets: [{ label: activeChartType.toUpperCase(), data: d, borderColor: activeChartType==='mpg'?'#2563EB':'#059669', backgroundColor: activeChartType==='mpg'?'rgba(37,99,235,0.1)':'rgba(5,150,105,0.1)', fill: true, tension: 0.3 }] }, 
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { maxTicksLimit: 6, color: textColor }, grid: { display: false } }, y: { beginAtZero: false, ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { display: false } } } 
             });
         }
 
-        window.switchChart = function(type) {
-            activeChartType = type;
-            const btnMpg = document.getElementById('btn-chart-mpg');
-            const btnPrice = document.getElementById('btn-chart-price');
-            const activeClass = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
-            const inactiveClass = "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400";
-            
-            if(type === 'mpg') {
-                btnMpg.className = `text-xs px-3 py-1.5 rounded-full font-bold transition ${activeClass}`;
-                btnPrice.className = `text-xs px-3 py-1.5 rounded-full font-bold transition ${inactiveClass}`;
-            } else {
-                btnMpg.className = `text-xs px-3 py-1.5 rounded-full font-bold transition ${inactiveClass}`;
-                btnPrice.className = `text-xs px-3 py-1.5 rounded-full font-bold transition ${activeClass}`;
-            }
-            window.render();
-        }
-
+        window.switchChart = (t) => { activeChartType=t; window.render(); };
+        
         document.getElementById('date').valueAsDate = new Date();
     </script>
 </body>
