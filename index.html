@@ -2020,17 +2020,6 @@
             const latestOdometer = getLatestOdometer(logs);
             const lastFuel = sortedLogs.find(log => log.type !== 'service');
             const trailingPartial = lastFuel && lastFuel.isPartial;
-            const hasAirFilterService = logs.some(log => log.type === 'service' && log.serviceType === 'Air Filter Replace');
-            if (!hasAirFilterService) {
-                alerts.push({
-                    level: 'warning',
-                    icon: 'fas fa-vial-circle-check',
-                    title: 'Test Alert: Air Filter Replace',
-                    text: 'Use this to test service logging. It disappears after an Air Filter Replace service entry is saved.',
-                    actionLabel: 'Log Service',
-                    action: "window.logServiceType('Air Filter Replace', 'Completed from test alert.')"
-                });
-            }
             const reminderAlerts = getVehicleReminders()
                 .map(reminder => ({ reminder, status: getReminderStatus(reminder, logs, latestOdometer) }))
                 .filter(item => ['overdue', 'due', 'soon', 'scheduled'].includes(item.status.level))
