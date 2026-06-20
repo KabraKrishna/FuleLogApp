@@ -514,35 +514,14 @@
         // CONFIG
         // ==========================================
         const hostname = window.location.hostname;
-        const IS_DEV_MODE = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-') || new URLSearchParams(window.location.search).get('mode') === 'dev';
+        const IS_DEV_MODE = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('-git-dev') || new URLSearchParams(window.location.search).get('mode') === 'dev';
         const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'fuel-tracker-v1';
         const DEV_SAMPLE_DATA_URL = 'backup.json';
         const DEV_SAMPLE_DATA_KEY = 'dev_mode_data';
         const DEV_SAMPLE_VERSION_KEY = 'dev_sample_version';
         let devSampleReady = Promise.resolve();
 
-        const DUMMY_DATA = {
-            "vehicles": [
-                {"id": "v_dummy", "name": "Honda Civic (Dev Mode)"},
-                {"id": "v_truck", "name": "Ford F-150 (Dev Mode)"}
-            ],
-            "logs": [
-                { "id": "l1", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-04-10", "odometer": 75200, "gallons": 10.5, "price": 3.45, "notes": "Initial tank fill-up", "isPartial": false },
-                { "id": "l2", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-04-18", "odometer": 75520, "gallons": 9.8, "price": 3.49, "notes": "Commute to work", "isPartial": false },
-                { "id": "l3", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-04-25", "odometer": 75850, "gallons": 10.2, "price": 3.52, "notes": "", "isPartial": false },
-                { "id": "l4", "vehicleId": "v_dummy", "type": "service", "date": "2026-05-01", "odometer": 76000, "notes": "Regular synthetic oil change", "serviceType": "Oil Change", "serviceCost": 45.00 },
-                { "id": "l5", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-05-05", "odometer": 76150, "gallons": 5.0, "price": 3.58, "notes": "Quick top-up, price is rising", "isPartial": true },
-                { "id": "l6", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-05-12", "odometer": 76500, "gallons": 10.8, "price": 3.65, "notes": "Full fill-up after partial", "isPartial": false },
-                { "id": "l7", "vehicleId": "v_dummy", "type": "service", "date": "2026-05-20", "odometer": 76700, "notes": "Tire alignment and rotation", "serviceType": "Tire Rotation", "serviceCost": 80.00 },
-                { "id": "l8", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-05-28", "odometer": 76820, "gallons": 9.9, "price": 3.62, "notes": "", "isPartial": false },
-                { "id": "l9", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-06-05", "odometer": 77140, "gallons": 10.1, "price": 3.55, "notes": "Road trip", "isPartial": false },
-                { "id": "l10", "vehicleId": "v_dummy", "type": "fuel", "date": "2026-06-15", "odometer": 77460, "gallons": 5.2, "price": 3.49, "notes": "Partial fill-up (trailing)", "isPartial": true },
-                { "id": "t1", "vehicleId": "v_truck", "type": "fuel", "date": "2026-05-02", "odometer": 42100, "gallons": 23.4, "price": 3.85, "notes": "First truck entry", "isPartial": false },
-                { "id": "t2", "vehicleId": "v_truck", "type": "fuel", "date": "2026-05-15", "odometer": 42480, "gallons": 24.1, "price": 3.89, "notes": "Hauling lumber", "isPartial": false },
-                { "id": "t3", "vehicleId": "v_truck", "type": "service", "date": "2026-05-25", "odometer": 42700, "notes": "Annual state safety inspection", "serviceType": "Inspection", "serviceCost": 35.00 },
-                { "id": "t4", "vehicleId": "v_truck", "type": "fuel", "date": "2026-06-01", "odometer": 42860, "gallons": 23.8, "price": 3.95, "notes": "", "isPartial": false }
-            ]
-        };
+        const DUMMY_DATA = {};
 
         // PWA: Register Service Worker
         if ('serviceWorker' in navigator && !IS_DEV_MODE) {
